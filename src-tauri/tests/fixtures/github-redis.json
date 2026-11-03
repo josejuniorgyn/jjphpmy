@@ -1,0 +1,29 @@
+[
+ {
+  "tag_name": "8.10.3",
+  "prerelease": false,
+  "draft": false,
+  "assets": [
+   {
+    "name": "Redis-8.10.3-Windows-x64-cygwin-with-Service.zip",
+    "browser_download_url": "https://github.com/redis-windows/redis-windows/releases/download/8.10.3/Redis-8.10.3-Windows-x64-cygwin-with-Service.zip",
+    "digest": "sha256:b1abde6130ec8c1a60d8ff765aafd9488e902ee7f9f05dc12bffebb9c089a4b5"
+   },
+   {
+    "name": "Redis-8.10.3-Windows-x64-cygwin.zip",
+    "browser_download_url": "https://github.com/redis-windows/redis-windows/releases/download/8.10.3/Redis-8.10.3-Windows-x64-cygwin.zip",
+    "digest": "sha256:8000848c48668c8cd32f21386ce951d0e02c1aefae39443ab9d3de11ff8ebf9e"
+   },
+   {
+    "name": "Redis-8.10.3-Windows-x64-msys2-with-Service.zip",
+    "browser_download_url": "https://github.com/redis-windows/redis-windows/releases/download/8.10.3/Redis-8.10.3-Windows-x64-msys2-with-Service.zip",
+    "digest": "sha256:fcfca988bee40378ceb8fbf6f44f0bb5d9ec131bd2599274513e710ca843d659"
+   },
+   {
+    "name": "Redis-8.10.3-Windows-x64-msys2.zip",
+    "browser_download_url": "https://github.com/redis-windows/redis-windows/releases/download/8.10.3/Redis-8.10.3-Windows-x64-msys2.zip",
+    "digest": "sha256:af16df340525b431e9ec8dabfd625d5e7a233f82805b5418819904ea909c447f"
+   }
+  ]
+ }
+]

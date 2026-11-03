@@ -1,0 +1,74 @@
+[
+ {
+  "current": false,
+  "eolDate": "2023-11-09",
+  "firstRelDate": "2018-10-18",
+  "latestMinor": "22",
+  "major": "11",
+  "relDate": "2023-11-09",
+  "supported": false
+ },
+ {
+  "current": false,
+  "eolDate": "2024-11-21",
+  "firstRelDate": "2019-10-03",
+  "latestMinor": "22",
+  "major": "12",
+  "relDate": "2024-11-21",
+  "supported": false
+ },
+ {
+  "current": false,
+  "eolDate": "2025-11-13",
+  "firstRelDate": "2020-09-24",
+  "latestMinor": "23",
+  "major": "13",
+  "relDate": "2025-11-13",
+  "supported": false
+ },
+ {
+  "current": false,
+  "eolDate": "2026-11-12",
+  "firstRelDate": "2021-09-30",
+  "latestMinor": "24",
+  "major": "14",
+  "relDate": "2026-08-13",
+  "supported": true
+ },
+ {
+  "current": false,
+  "eolDate": "2027-11-11",
+  "firstRelDate": "2022-10-13",
+  "latestMinor": "19",
+  "major": "15",
+  "relDate": "2026-08-13",
+  "supported": true
+ },
+ {
+  "current": false,
+  "eolDate": "2028-11-09",
+  "firstRelDate": "2023-09-14",
+  "latestMinor": "15",
+  "major": "16",
+  "relDate": "2026-08-13",
+  "supported": true
+ },
+ {
+  "current": false,
+  "eolDate": "2029-11-08",
+  "firstRelDate": "2024-09-26",
+  "latestMinor": "11",
+  "major": "17",
+  "relDate": "2026-08-13",
+  "supported": true
+ },
+ {
+  "current": true,
+  "eolDate": "2030-11-14",
+  "firstRelDate": "2025-09-25",
+  "latestMinor": "6",
+  "major": "18",
+  "relDate": "2026-08-13",
+  "supported": true
+ }
+]

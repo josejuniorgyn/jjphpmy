@@ -1,0 +1,119 @@
+[
+ {
+  "version": "v27.0.0-alpha.0.0.0",
+  "date": "2026-10-29",
+  "files": [
+   "aix-ppc64",
+   "headers",
+   "linux-arm64",
+   "linux-ppc64le",
+   "linux-s390x",
+   "linux-x64",
+   "linux-x64-musl",
+   "osx-arm64-tar",
+   "osx-x64-pkg",
+   "src",
+   "win-arm64-7z",
+   "win-arm64-zip",
+   "win-x64-7z",
+   "win-x64-exe",
+   "win-x64-msi",
+   "win-x64-zip"
+  ],
+  "lts": false
+ },
+ {
+  "version": "v26.13.0",
+  "date": "2026-10-28",
+  "files": [
+   "aix-ppc64",
+   "headers",
+   "linux-arm64",
+   "linux-ppc64le",
+   "linux-s390x",
+   "linux-x64",
+   "linux-x64-musl",
+   "osx-arm64-tar",
+   "osx-x64-pkg",
+   "osx-x64-tar",
+   "src",
+   "win-arm64-7z",
+   "win-arm64-zip",
+   "win-x64-7z",
+   "win-x64-exe",
+   "win-x64-msi",
+   "win-x64-zip"
+  ],
+  "lts": "Lithium"
+ },
+ {
+  "version": "v26.12.1",
+  "date": "2026-10-21",
+  "files": [
+   "aix-ppc64",
+   "headers",
+   "linux-arm64",
+   "linux-ppc64le",
+   "linux-s390x",
+   "linux-x64",
+   "linux-x64-musl",
+   "osx-arm64-tar",
+   "osx-x64-pkg",
+   "osx-x64-tar",
+   "src",
+   "win-arm64-7z",
+   "win-arm64-zip",
+   "win-x64-7z",
+   "win-x64-exe",
+   "win-x64-msi",
+   "win-x64-zip"
+  ],
+  "lts": false
+ },
+ {
+  "version": "v22.11.0",
+  "date": "2024-10-29",
+  "files": [
+   "aix-ppc64",
+   "headers",
+   "linux-arm64",
+   "linux-armv7l",
+   "linux-ppc64le",
+   "linux-s390x",
+   "linux-x64",
+   "osx-arm64-tar",
+   "osx-x64-pkg",
+   "osx-x64-tar",
+   "src",
+   "win-arm64-7z",
+   "win-arm64-zip",
+   "win-x64-7z",
+   "win-x64-exe",
+   "win-x64-msi",
+   "win-x64-zip",
+   "win-x86-7z",
+   "win-x86-exe",
+   "win-x86-msi",
+   "win-x86-zip"
+  ],
+  "lts": "Jod"
+ },
+ {
+  "version": "v0.10.0",
+  "date": "2013-03-11",
+  "files": [
+   "linux-x64",
+   "linux-x86",
+   "osx-x64-pkg",
+   "osx-x64-tar",
+   "osx-x86-tar",
+   "src",
+   "sunos-x64",
+   "sunos-x86",
+   "win-x64-exe",
+   "win-x86-exe",
+   "win-x86-msi"
+  ],
+  "lts": false
+ }
+]

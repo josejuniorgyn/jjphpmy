@@ -1,0 +1,179 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "id": "vcredist",
+      "name": "Visual C++ Redistributable",
+      "category": "system",
+      "description": "Runtime da Microsoft exigido pelo Apache e pelo PHP.",
+      "hidden": true,
+      "source": {
+        "type": "static",
+        "url": "https://aka.ms/vc14/vc_redist.x64.exe",
+        "urlTemplate": "https://aka.ms/vc14/vc_redist.x64.exe"
+      },
+      "fallbackVersions": ["14"]
+    },
+    {
+      "id": "apache",
+      "name": "Apache HTTP Server",
+      "category": "webserver",
+      "description": "Servidor web (builds Apache Lounge, Win64).",
+      "requires": ["vcredist"],
+      "service": "apache",
+      "source": {
+        "type": "apachelounge",
+        "url": "https://www.apachelounge.com/download/",
+        "notes": "O Apache Lounge só publica a versão atual; checksums em {url}.txt"
+      },
+      "fallbackVersions": ["2.4.69"]
+    },
+    {
+      "id": "nginx",
+      "name": "Nginx",
+      "category": "webserver",
+      "description": "Servidor web leve; usa PHP via php-cgi (FastCGI).",
+      "service": "nginx",
+      "source": {
+        "type": "nginx",
+        "url": "https://nginx.org/en/download.html",
+        "urlTemplate": "https://nginx.org/download/nginx-{v}.zip"
+      },
+      "fallbackVersions": ["1.31.8", "1.30.6"]
+    },
+    {
+      "id": "php",
+      "name": "PHP",
+      "category": "language",
+      "description": "Thread Safe se Apache estiver selecionado; Non-Thread Safe com Nginx.",
+      "requires": ["vcredist"],
+      "source": {
+        "type": "php-releases",
+        "url": "https://windows.php.net/downloads/releases/releases.json",
+        "notes": "Também lê https://windows.php.net/downloads/releases/archives/ (a partir do 7.4)"
+      },
+      "fallbackVersions": ["8.5.12-1", "8.4.27-1", "8.3.36-1"]
+    },
+    {
+      "id": "mysql",
+      "name": "MySQL",
+      "category": "database",
+      "description": "Banco de dados relacional (zip winx64).",
+      "service": "mysql",
+      "source": {
+        "type": "mysql-tags",
+        "url": "https://api.github.com/repos/mysql/mysql-server/git/matching-refs/tags/mysql-",
+        "urlTemplate": "https://cdn.mysql.com/Downloads/MySQL-{mm}/mysql-{v}-winx64.zip",
+        "notes": "A CDN só mantém a última versão de cada linha; o arquivo de versões antigas bloqueia downloads automáticos"
+      },
+      "fallbackVersions": ["8.4.13", "8.0.46"]
+    },
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "category": "database",
+      "description": "Banco de dados relacional (binários zip da EDB).",
+      "service": "postgresql",
+      "source": {
+        "type": "postgresql-versions",
+        "url": "https://www.postgresql.org/versions.json",
+        "urlTemplate": "https://get.enterprisedb.com/postgresql/postgresql-{v}-1-windows-x64-binaries.zip"
+      },
+      "fallbackVersions": ["18.6", "17.11", "16.15"]
+    },
+    {
+      "id": "mongodb",
+      "name": "MongoDB",
+      "category": "database",
+      "description": "Banco de dados de documentos (Community Server).",
+      "service": "mongodb",
+      "source": {
+        "type": "mongodb-current",
+        "url": "https://downloads.mongodb.org/current.json",
+        "urlTemplate": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-{v}.zip",
+        "notes": "current.json traz a última de cada linha; full.json (50 MB) tem todas"
+      },
+      "fallbackVersions": ["9.0.4", "8.0.34"]
+    },
+    {
+      "id": "phpmyadmin",
+      "name": "phpMyAdmin",
+      "category": "tool",
+      "description": "Administração do MySQL pelo navegador.",
+      "requires": ["php", "mysql"],
+      "requiresAnyOf": [["apache", "nginx"]],
+      "source": {
+        "type": "phpmyadmin",
+        "url": "https://www.phpmyadmin.net/home_page/version.json",
+        "urlTemplate": "https://files.phpmyadmin.net/phpMyAdmin/{v}/phpMyAdmin-{v}-all-languages.zip"
+      },
+      "fallbackVersions": ["5.2.3"]
+    },
+    {
+      "id": "nodejs",
+      "name": "Node.js",
+      "category": "language",
+      "description": "Runtime JavaScript (zip win-x64).",
+      "source": {
+        "type": "node-dist",
+        "url": "https://nodejs.org/dist/index.json",
+        "urlTemplate": "https://nodejs.org/dist/v{v}/node-v{v}-win-x64.zip"
+      },
+      "fallbackVersions": ["26.13.0", "22.11.0"]
+    },
+    {
+      "id": "python",
+      "name": "Python",
+      "category": "language",
+      "description": "Distribuição 'embeddable' (zip) do python.org.",
+      "source": {
+        "type": "python-files",
+        "url": "https://www.python.org/api/v2/downloads/release_file/?os=1",
+        "urlTemplate": "https://www.python.org/ftp/python/{v}/python-{v}-embed-amd64.zip",
+        "notes": "Para habilitar o pip, descomentar 'import site' no python3XX._pth"
+      },
+      "fallbackVersions": ["3.14.10"]
+    },
+    {
+      "id": "memcached",
+      "name": "Memcached",
+      "category": "cache",
+      "description": "Cache em memória (build não oficial para Windows).",
+      "service": "memcached",
+      "source": {
+        "type": "github-releases",
+        "url": "https://api.github.com/repos/jefyt/memcached-windows/releases?per_page=30",
+        "assetPattern": "^memcached-(\\d+\\.\\d+\\.\\d+)-win64-mingw\\.zip$",
+        "notes": "Não há build oficial para Windows; a release pode exigir as DLLs de libevent/libressl publicadas junto"
+      },
+      "fallbackVersions": ["1.6.8"]
+    },
+    {
+      "id": "redis",
+      "name": "Redis",
+      "category": "cache",
+      "description": "Armazenamento chave-valor (build não oficial para Windows).",
+      "service": "redis",
+      "source": {
+        "type": "github-releases",
+        "url": "https://api.github.com/repos/redis-windows/redis-windows/releases?per_page=30",
+        "assetPattern": "^Redis-(\\d+\\.\\d+\\.\\d+)-Windows-x64-msys2\\.zip$",
+        "notes": "Não há build oficial para Windows; alternativa: Memurai"
+      },
+      "fallbackVersions": ["8.10.3"]
+    },
+    {
+      "id": "mailpit",
+      "name": "Mailpit",
+      "category": "tool",
+      "description": "Captura de e-mails (SMTP 1025, interface web 8025).",
+      "service": "mailpit",
+      "source": {
+        "type": "github-releases",
+        "url": "https://api.github.com/repos/axllent/mailpit/releases?per_page=30",
+        "assetPattern": "^mailpit-windows-amd64\\.zip$"
+      },
+      "fallbackVersions": ["1.33.0"]
+    }
+  ]
+}

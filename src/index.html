@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JJPHPMY</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>JJPHPMY</h1>
+    <nav>
+      <button class="tab" data-tab="pacotes">Pacotes</button>
+      <button class="tab" data-tab="instalados">Instalados</button>
+      <button class="tab" data-tab="configuracoes">Configurações</button>
+      <button class="tab" data-tab="servicos">Serviços e Portas</button>
+      <button class="tab" data-tab="importar">Importar</button>
+      <button class="tab" data-tab="sobre">Sobre</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Pacotes: seleção, versão e dependências automáticas -->
+    <section id="pacotes" class="panel">
+      <p class="hint">Marque o que deseja instalar. Dependências são marcadas automaticamente.</p>
+      <div id="package-list"></div>
+      <div id="plan" class="plan" hidden></div>
+      <div class="actions">
+        <button id="btn-install" class="primary" disabled>Instalar selecionados</button>
+        <button id="btn-refresh-versions" class="secondary" type="button">Atualizar versões</button>
+      </div>
+    </section>
+
+    <!-- Instalados: versão ativa e remoção -->
+    <section id="instalados" class="panel">
+      <p class="hint">Versões instaladas em C:\jjphpmy\bin. A versão ativa é a usada pelos serviços.</p>
+      <table>
+        <thead>
+          <tr><th>Ativa</th><th>Pacote</th><th>Versão</th><th>Pasta</th><th></th></tr>
+        </thead>
+        <tbody id="installed-body"></tbody>
+      </table>
+      <p id="installed-empty" class="hint" hidden>Nenhum pacote instalado ainda. Use a aba Pacotes.</p>
+    </section>
+
+    <!-- Tela 1: Configurações -->
+    <section id="configuracoes" class="panel">
+      <form id="settings-form">
+        <fieldset>
+          <legend>Geral</legend>
+          <label class="check"><input type="checkbox" name="startWithWindows"> Iniciar jjphpmy com Windows</label>
+          <label class="check"><input type="checkbox" name="runMinimized"> Executar minimizado</label>
+          <label class="check"><input type="checkbox" name="autoStartAll"> Iniciar tudo automaticamente</label>
+          <label>Definir linguagem
+            <select name="language">
+              <option value="pt-BR">Português do Brasil</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Diretórios</legend>
+          <label>Document Root <input type="text" name="documentRoot"></label>
+          <label>Diretório de dados <input type="text" name="dataDir"></label>
+          <label>Editor de configuração <input type="text" name="editor"></label>
+          <label class="check"><input type="checkbox" name="addToPath"> Adicionar PHP, Node.js, Python e bancos de dados ao PATH do Windows</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Hosts virtuais</legend>
+          <label class="check"><input type="checkbox" name="autoVirtualHosts"> Criar automaticamente os hosts virtuais</label>
+          <label>Hostname <input type="text" name="hostnamePattern" placeholder="{name}.test"></label>
+          <p class="hint">Cada pasta dentro do Document Root vira um site. O Windows pede permissão de administrador para atualizar o arquivo hosts.</p>
+          <ul id="sites" class="sites"></ul>
+        </fieldset>
+
+        <fieldset>
+          <legend>Backup e atualização</legend>
+          <label class="check"><input type="checkbox" name="autoBackup"> Backup automático</label>
+          <label>Intervalo de backup
+            <select name="backupIntervalHours">
+              <option value="1">A cada 1 hora</option>
+              <option value="6">A cada 6 horas</option>
+              <option value="12">A cada 12 horas</option>
+              <option value="24">Diário</option>
+              <option value="168">Semanal</option>
+            </select>
+          </label>
+          <label>Manter os últimos <input type="number" name="backupKeep" min="1" max="999"> backups</label>
+          <p class="hint">O backup salva MySQL, PostgreSQL e MongoDB (os que estiverem rodando) e a pasta etc\ em C:\jjphpmy\backup.</p>
+          <div class="inline-actions">
+            <button id="btn-backup" class="secondary" type="button">Fazer backup agora</button>
+            <button id="btn-backup-folder" class="link" type="button">Abrir pasta de backup</button>
+            <span id="backup-info" class="hint"></span>
+          </div>
+          <label class="check"><input type="checkbox" name="autoUpdate"> Atualização automática</label>
+          <div class="inline-actions">
+            <button id="btn-update" class="secondary" type="button">Verificar atualização agora</button>
+          </div>
+        </fieldset>
+
+        <div class="actions"><button type="submit" class="primary">Salvar</button></div>
+      </form>
+    </section>
+
+    <!-- Tela 2: Serviços e Portas -->
+    <section id="servicos" class="panel">
+      <div class="toolbar">
+        <button id="btn-start-all" class="primary" type="button">Iniciar tudo</button>
+        <button id="btn-stop-all" class="secondary" type="button">Parar tudo</button>
+        <button id="btn-terminal" class="secondary" type="button">Terminal</button>
+        <span class="hint">"Iniciar tudo" inicia os serviços instalados e marcados como Ativado.</span>
+      </div>
+      <form id="services-form">
+        <table>
+          <thead>
+            <tr><th>Ativado</th><th>Serviço</th><th>Porta</th><th>SSL</th><th>Porta SSL</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="services-body"></tbody>
+        </table>
+        <p class="hint">Ao salvar, os arquivos de configuração em etc\ são atualizados com as novas portas.</p>
+        <div class="actions">
+          <button type="submit" class="primary">Salvar</button>
+          <button id="btn-regenerate" class="secondary" type="button">Recriar arquivos de configuração</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Importar do Laragon e restaurar backup -->
+    <section id="importar" class="panel">
+      <fieldset>
+        <legend>Importar do Laragon</legend>
+        <p id="laragon-info" class="hint">Procurando o Laragon...</p>
+        <label class="check"><input type="checkbox" id="imp-www" checked> Copiar as pastas de www (arquivos que já existem não são sobrescritos)</label>
+        <label class="check"><input type="checkbox" id="imp-mysql" checked> Importar os bancos MySQL</label>
+        <label>Senha do root no MySQL do Laragon <input type="password" id="imp-password" placeholder="vazia, se nunca mudou"></label>
+        <p class="hint">O Laragon só é lido: nada é apagado nem alterado nele. Com MySQL 8.4 nos dois, a pasta de dados é copiada inteira
+          (mantém usuários e senhas); com versões diferentes, os bancos são exportados e importados.</p>
+        <div class="inline-actions">
+          <button id="btn-import" class="primary" type="button">Importar</button>
+          <button id="btn-laragon-refresh" class="link" type="button">Verificar de novo</button>
+        </div>
+        <pre id="import-log" class="log" hidden></pre>
+      </fieldset>
+
+      <fieldset>
+        <legend>Restaurar backup do JJPHPMY</legend>
+        <p class="hint">Restaura o MySQL e o PostgreSQL do backup escolhido. Os serviços precisam estar rodando.
+          Os bancos do backup substituem os atuais com o mesmo nome.</p>
+        <div class="inline-actions">
+          <select id="restore-file"></select>
+          <button id="btn-restore" class="secondary" type="button">Restaurar</button>
+        </div>
+      </fieldset>
+    </section>
+
+    <!-- Sobre -->
+    <section id="sobre" class="panel">
+      <fieldset>
+        <legend>JJPHPMY <span id="app-version"></span></legend>
+        <p>Ambiente de desenvolvimento local para Windows.</p>
+        <p><strong>Autor:</strong> Jose Antonio de Melo Junior</p>
+        <p><strong>E-mail:</strong> <a href="#" id="author-email">josejuniorgyn@gmail.com</a></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Contribua com o projeto</legend>
+        <p class="hint">Selecione um valor para gerar o QR Code PIX.</p>
+        <div id="amounts" class="amounts"></div>
+        <div id="pix" class="pix" hidden>
+          <div id="pix-qr" class="pix-qr"></div>
+          <div class="pix-info">
+            <p><strong id="pix-amount"></strong> para josejuniorgyn@gmail.com</p>
+            <label class="stack">PIX copia e cola
+              <textarea id="pix-payload" rows="4" readonly></textarea>
+            </label>
+            <button id="btn-copy-pix" class="primary" type="button">Copiar código</button>
+          </div>
+        </div>
+      </fieldset>
+    </section>
+  </main>
+
+  <div id="toast" role="status" hidden></div>
+  <script src="main.js"></script>
+</body>
+</html>

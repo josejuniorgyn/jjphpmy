@@ -1,0 +1,205 @@
+{
+ "versions": [
+  {
+   "version": "9.0.4",
+   "production_release": true,
+   "downloads": [
+    {
+     "arch": "x86_64",
+     "archive": {
+      "sha1": "8be56bebf4019854b9487241823bd46c3c117de9",
+      "sha256": "1e6234c8c33e75de3659a7e1104cb12f1cb68ae41cba60b625537c1ed9256d43",
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-9.0.4.zip"
+     },
+     "edition": "base",
+     "msi": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-9.0.4-signed.msi",
+     "target": "windows"
+    },
+    {
+     "arch": "x86_64",
+     "archive": {
+      "sha1": "39b5072f9bf4cae213665d8ae82e18365fafcaa2",
+      "sha256": "efdf2145673b94ef59eef90a6caff13afe007a22568f854a2be9b3df67b6918e",
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-9.0.4.zip"
+     },
+     "crypt_shared": {
+      "sha1": "cdf7e785ced8fe0491c8c7202797326124a9be45",
+      "sha256": "3d97f80074a69e92202d6e208b9a13a22fe39ba70e0cce890db4a3806093afb0",
+      "url": "https://downloads.mongodb.com/windows/mongo_crypt_shared_v1-windows-x86_64-enterprise-9.0.4.zip"
+     },
+     "cryptd": {
+      "sha1": "7b0964e430d3f056c4fa87e2d0c8cea1a6b6599a",
+      "sha256": "fc2a4ddfd0a254b6a6702c031230c285da00471bb2be0d12a5ec6e352bb8c71b",
+      "url": "https://downloads.mongodb.com/windows/mongodb-cryptd-windows-x86_64-enterprise-9.0.4.zip"
+     },
+     "edition": "enterprise",
+     "msi": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-9.0.4-signed.msi",
+     "packages": [
+      "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-9.0.4-signed.msi"
+     ],
+     "target": "windows"
+    },
+    {
+     "arch": "x86_64",
+     "archive": {
+      "debug_symbols": "https://downloads.mongodb.com/linux/mongodb-linux-x86_64-enterprise-ubuntu2204-debugsymbols-9.0.4.tgz",
+      "sha1": "f02199460babec76e79c704015225b2a07a2ff9a",
+      "sha256": "2ec23a86fb7136376b8066d70e69ad219f0e91934609e3eec48e1dff483c7d34",
+      "url": "https://downloads.mongodb.com/linux/mongodb-linux-x86_64-enterprise-ubuntu2204-9.0.4.tgz"
+     },
+     "crypt_shared": {
+      "sha1": "ca1546f5b08b0c45471a061fbe87faf49781fede",
+      "sha256": "cfd3e920ad914a07d049b0a048f0d1f22bdba5e491354eb7cfc3d8f77b2049d3",
+      "url": "https://downloads.mongodb.com/linux/mongo_crypt_shared_v1-linux-x86_64-enterprise-ubuntu2204-9.0.4.tgz"
+     },
+     "cryptd": {
+      "sha1": "782289127684f17a0254007c09905f0f56941edb",
+      "sha256": "3a2d05cdd2143a3959cfb27f7748d788b05f30d4249b711e92d7353cbddaaeee",
+      "url": "https://downloads.mongodb.com/linux/mongodb-cryptd-linux-x86_64-enterprise-ubuntu2204-9.0.4.tgz"
+     },
+     "edition": "enterprise",
+     "packages": [
+      "https://repo.mongodb.com/apt/ubuntu/dists/jammy/mongodb-enterprise/9.0/multiverse/binary-amd64/mongodb-enterprise-server_9.0.4_amd64.deb",
+      "https://repo.mongodb.com/apt/ubuntu/dists/jammy/mongodb-enterprise/9.0/multiverse/binary-amd64/mongodb-enterprise-mongos_9.0.4_amd64.deb",
+      "https://repo.mongodb.com/apt/ubuntu/dists/jammy/mongodb-enterprise/9.0/multiverse/binary-amd64/mongodb-enterprise-cryptd_9.0.4_amd64.deb"
+     ],
+     "target": "ubuntu2204"
+    }
+   ]
+  },
+  {
+   "version": "8.3.13",
+   "production_release": true,
+   "downloads": [
+    {
+     "arch": "x86_64",
+     "archive": {
+      "sha1": "c36eef81ec037425b8198798b061216759b90331",
+      "sha256": "61fcc2b2ac3a295ba2d8c80f678f01502b96647d835f0159b694c507035b5238",
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.3.13.zip"
+     },
+     "edition": "base",
+     "msi": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.3.13-signed.msi",
+     "target": "windows"
+    },
+    {
+     "arch": "x86_64",
+     "archive": {
+      "sha1": "26ded696ca3fb5af2d93bd6ab64d33c767ac9ca5",
+      "sha256": "7137509235349b8ec691331ffa10f56b22ca871b937b5b384d88d014414504c5",
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.3.13.zip"
+     },
+     "crypt_shared": {
+      "sha1": "8ad902bba54fd3f0f3a18432964c8e9d78d22c5b",
+      "sha256": "93519d2d1ebc26cba7e5b523fe7086cf3daf83ed689423dc3405209d4945ebae",
+      "url": "https://downloads.mongodb.com/windows/mongo_crypt_shared_v1-windows-x86_64-enterprise-8.3.13.zip"
+     },
+     "cryptd": {
+      "sha1": "4d13f5b2be5ea0b9f8bff4f3e14b43a5be045977",
+      "sha256": "01bb7bb4b44587e72897d1ac7d69501d0017b74b68405d27490059e7fbd53c06",
+      "url": "https://downloads.mongodb.com/windows/mongodb-cryptd-windows-x86_64-enterprise-8.3.13.zip"
+     },
+     "edition": "enterprise",
+     "msi": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.3.13-signed.msi",
+     "packages": [
+      "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.3.13-signed.msi"
+     ],
+     "target": "windows"
+    },
+    {
+     "arch": "x86_64",
+     "archive": {
+      "debug_symbols": "https://downloads.mongodb.com/linux/mongodb-linux-x86_64-enterprise-ubuntu2204-debugsymbols-8.3.13.tgz",
+      "sha1": "565e2d31f3e302046933af7770ac6db2ab67b8d1",
+      "sha256": "0f09731c95e8dbe7ce6cd6fda06736a3cc0ce8daeafd0c2d2548e4e1487fe7f2",
+      "url": "https://downloads.mongodb.com/linux/mongodb-linux-x86_64-enterprise-ubuntu2204-8.3.13.tgz"
+     },
+     "crypt_shared": {
+      "sha1": "d79b39e33095fa7bd365797da021fb6af0916388",
+      "sha256": "580164fc90b98e6f9a16fe4bea0970401c758a5f0306a38d2d0a586b1e84eeca",
+      "url": "https://downloads.mongodb.com/linux/mongo_crypt_shared_v1-linux-x86_64-enterprise-ubuntu2204-8.3.13.tgz"
+     },
+     "cryptd": {
+      "sha1": "87b55beea42ba1a26569f7dfb6e53ae336cad3c9",
+      "sha256": "4a07ffc1d24a679f922fce11c173bd900df2d1a9f17f765b93d136fbc265ec39",
+      "url": "https://downloads.mongodb.com/linux/mongodb-cryptd-linux-x86_64-enterprise-ubuntu2204-8.3.13.tgz"
+     },
+     "edition": "enterprise",
+     "packages": [
+      "https://repo.mongodb.com/apt/ubuntu/dists/jammy/mongodb-enterprise/8.3/multiverse/binary-amd64/mongodb-enterprise-server_8.3.13_amd64.deb",
+      "https://repo.mongodb.com/apt/ubuntu/dists/jammy/mongodb-enterprise/8.3/multiverse/binary-amd64/mongodb-enterprise-mongos_8.3.13_amd64.deb",
+      "https://repo.mongodb.com/apt/ubuntu/dists/jammy/mongodb-enterprise/8.3/multiverse/binary-amd64/mongodb-enterprise-cryptd_8.3.13_amd64.deb"
+     ],
+     "target": "ubuntu2204"
+    }
+   ]
+  },
+  {
+   "version": "8.2.12",
+   "production_release": true,
+   "downloads": [
+    {
+     "arch": "x86_64",
+     "archive": {
+      "sha1": "d1bf300988e1c80bfc5bcc8f28d632f9c662ce5b",
+      "sha256": "a45fca0ea0ff5dd8ab00bc10b103df33177cb519839e05f36dfe841a84cd21cd",
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.2.12.zip"
+     },
+     "edition": "base",
+     "msi": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.2.12-signed.msi",
+     "target": "windows"
+    },
+    {
+     "arch": "x86_64",
+     "archive": {
+      "sha1": "f5925b96f7c430efc800144650afed59709f5b9b",
+      "sha256": "7cfee9bde3e1ce045dd522645aee9b4c36b7ed15bc71988d3a583bb904d2e051",
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.2.12.zip"
+     },
+     "crypt_shared": {
+      "sha1": "6a5dba11c0bc4a44c94f167dd25e055a88a9df99",
+      "sha256": "74446be6074523052897ccd181125edf07503ed1483954eadb4fa4d99aeec763",
+      "url": "https://downloads.mongodb.com/windows/mongo_crypt_shared_v1-windows-x86_64-enterprise-8.2.12.zip"
+     },
+     "cryptd": {
+      "sha1": "62358de08e087e923a7f5437b35ed88bcc3371ee",
+      "sha256": "e017007c4dd854690d9351164617b8ebf2b810c1819c7dc4ba95f3998229db63",
+      "url": "https://downloads.mongodb.com/windows/mongodb-cryptd-windows-x86_64-enterprise-8.2.12.zip"
+     },
+     "edition": "enterprise",
+     "msi": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.2.12-signed.msi",
+     "packages": [
+      "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.2.12-signed.msi"
+     ],
+     "target": "windows"
+    },
+    {
+     "arch": "x86_64",
+     "archive": {
+      "debug_symbols": "https://downloads.mongodb.com/linux/mongodb-linux-x86_64-enterprise-ubuntu2204-debugsymbols-8.2.12.tgz",
+      "sha1": "959508515a72dbb9b2ea3e4b036c53ee3f75d2d9",
+      "sha256": "a595357aea9b22061c39d80b0219abf9b8daafad82d36898d154702cbbd91b47",
+      "url": "https://downloads.mongodb.com/linux/mongodb-linux-x86_64-enterprise-ubuntu2204-8.2.12.tgz"
+     },
+     "crypt_shared": {
+      "sha1": "ab07f363cbf2949472b8bff87da5abc3c214ed6e",
+      "sha256": "9d5fc69a149cafb25eb0f48a19eefc464d9cd7898078f49e68ffc795b15be894",
+      "url": "https://downloads.mongodb.com/linux/mongo_crypt_shared_v1-linux-x86_64-enterprise-ubuntu2204-8.2.12.tgz"
+     },
+     "cryptd": {
+      "sha1": "cb0de45a456f5054fa51c25f28196764c878e786",
+      "sha256": "bb77e87f6dbb4773d38a0fcbd2fc0e6b5a7c4887f214c4d0dd136932fbdb6ef1",
+      "url": "https://downloads.mongodb.com/linux/mongodb-cryptd-linux-x86_64-enterprise-ubuntu2204-8.2.12.tgz"
+     },
+     "edition": "enterprise",
+     "packages": [
+      "https://repo.mongodb.com/apt/ubuntu/dists/jammy/mongodb-enterprise/8.2/multiverse/binary-amd64/mongodb-enterprise-server_8.2.12_amd64.deb",
+      "https://repo.mongodb.com/apt/ubuntu/dists/jammy/mongodb-enterprise/8.2/multiverse/binary-amd64/mongodb-enterprise-mongos_8.2.12_amd64.deb",
+      "https://repo.mongodb.com/apt/ubuntu/dists/jammy/mongodb-enterprise/8.2/multiverse/binary-amd64/mongodb-enterprise-cryptd_8.2.12_amd64.deb"
+     ],
+     "target": "ubuntu2204"
+    }
+   ]
+  }
+ ]
+}

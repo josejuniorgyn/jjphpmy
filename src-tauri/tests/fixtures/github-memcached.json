@@ -1,0 +1,71 @@
+[
+ {
+  "tag_name": "1.6.8_mingw_libressl",
+  "prerelease": false,
+  "draft": false,
+  "assets": [
+   {
+    "name": "hashes.txt",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw_libressl/hashes.txt",
+    "digest": "sha256:67689c94f5f60036dda541d1400044e4cbd28b936855830e0e70b6d52be424c3"
+   },
+   {
+    "name": "libevent-2.1.12-stable-win64-mingw.zip",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw_libressl/libevent-2.1.12-stable-win64-mingw.zip",
+    "digest": "sha256:617fe0e90c788720be9000ba0c30132f37ada5c6682ef95992ece7172a75f0f2"
+   },
+   {
+    "name": "libressl-4.2.1-win64-mingw.zip",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw_libressl/libressl-4.2.1-win64-mingw.zip",
+    "digest": "sha256:d573a221c0c9d48d53b5e2b3c73d6806e0f3fa02d42eb38b157635bc3cdd4796"
+   },
+   {
+    "name": "memcached-1.6.8-win64-mingw.zip",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw_libressl/memcached-1.6.8-win64-mingw.zip",
+    "digest": "sha256:48ec62cef718f0d73698414b783c0e4a69821013553ca00afe0eed324eb5994b"
+   }
+  ]
+ },
+ {
+  "tag_name": "1.6.8_mingw",
+  "prerelease": false,
+  "draft": false,
+  "assets": [
+   {
+    "name": "hashes.txt",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/hashes.txt",
+    "digest": null
+   },
+   {
+    "name": "libevent-2.1.12-stable-win32-mingw.zip",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/libevent-2.1.12-stable-win32-mingw.zip",
+    "digest": null
+   },
+   {
+    "name": "libevent-2.1.12-stable-win64-mingw.zip",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/libevent-2.1.12-stable-win64-mingw.zip",
+    "digest": null
+   },
+   {
+    "name": "memcached-1.6.8-win32-mingw.zip",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win32-mingw.zip",
+    "digest": null
+   },
+   {
+    "name": "memcached-1.6.8-win64-mingw.zip",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/memcached-1.6.8-win64-mingw.zip",
+    "digest": null
+   },
+   {
+    "name": "openssl-3.0.5-win32-mingw.zip",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/openssl-3.0.5-win32-mingw.zip",
+    "digest": null
+   },
+   {
+    "name": "openssl-3.0.5-win64-mingw.zip",
+    "browser_download_url": "https://github.com/jefyt/memcached-windows/releases/download/1.6.8_mingw/openssl-3.0.5-win64-mingw.zip",
+    "digest": null
+   }
+  ]
+ }
+]
