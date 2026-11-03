@@ -54,4 +54,4 @@ npm run build
 
 Se preferir clique em Releases e baixe o instalador, ou clique no link abaixo:
 
-https://github.com/josejuniorgyn/jjphpmy/releases/download/untagged-856adb93cab3a56cc149/jjphpmy_0.1.0_x64-setup.exe
+[jjphpmy_0.1.0_x64-setup.exe](https://github.com/josejuniorgyn/jjphpmy/releases/download/v0.1.0/jjphpmy_0.1.0_x64-setup.exe)
