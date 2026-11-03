@@ -50,6 +50,8 @@ Gerar o instalador (`src-tauri/target/release/bundle/nsis/jjphpmy_0.1.0_x64-setu
 npm run build
 ```
 
-## 3. Continuar o desenvolvimento com o Claude
+## 3. Instalador atual
 
-O arquivo [CLAUDE.md](CLAUDE.md) tem a especificação completa e o roteiro em etapas. O Claude Code o lê automaticamente. Os prompts prontos para cada etapa estão em [docs/PROMPTS.md](docs/PROMPTS.md).
+Se preferir clique em Releases e baixe o instalador, ou clique no link abaixo:
+
+https://github.com/josejuniorgyn/jjphpmy/releases/download/untagged-856adb93cab3a56cc149/jjphpmy_0.1.0_x64-setup.exe
