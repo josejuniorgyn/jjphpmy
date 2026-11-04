@@ -52,6 +52,8 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             &item("mailpit", "Mailpit (e-mails)")?,
             &item("www", "Abrir pasta www")?,
             &item("backup", "Fazer backup agora")?,
+            &item("notepadpp", "Notepad++")?,
+            &item("filezilla", "FileZilla")?,
             &sep()?,
             &item("settings", "Configurações...")?,
             &item("services", "Serviços e Portas...")?,
@@ -129,6 +131,30 @@ fn on_menu(app: &AppHandle, id: &str) {
                 notify(&app, msg);
             });
         }
+        "notepadpp" => {
+            let path = app.state::<AppState>().config.lock().unwrap().installed.iter()
+                .find(|p| p.id == "notepadpp" && p.active)
+                .map(|p| PathBuf::from(&p.path).join("notepad++.exe"));
+            match path.filter(|p| p.exists()) {
+                Some(exe) => {
+                    if let Err(e) = Command::new(exe).spawn() {
+                        notify(app, format!("Não foi possível abrir o Notepad++: {e}"));
+                    }
+                }
+                None => notify(app, "Notepad++ não está instalado. Instale na aba Pacotes (Ferramentas)."),
+            }
+        }
+        "filezilla" => match filezilla_exe() {
+            Some(exe) => {
+                if let Err(e) = Command::new(exe).spawn() {
+                    notify(app, format!("Não foi possível abrir o FileZilla: {e}"));
+                }
+            }
+            None => {
+                open_url(app, FILEZILLA_PAGE.into());
+                notify(app, "FileZilla não encontrado: abri a página oficial para você baixar e instalar.");
+            }
+        },
         "terminal" => {
             let cfg = app.state::<AppState>().config.lock().unwrap().clone();
             if let Err(e) = crate::services::open_terminal(&cfg, &crate::confgen::Layout::system()) {
@@ -156,6 +182,21 @@ fn on_menu(app: &AppHandle, id: &str) {
         other if other.starts_with("edit:") => edit_file(app, other),
         _ => {}
     }
+}
+
+const FILEZILLA_PAGE: &str = "https://filezilla-project.org/download.php?type=client";
+
+/// FileZilla instalado pelo instalador oficial (para todos ou só para o usuário).
+fn filezilla_exe() -> Option<PathBuf> {
+    let mut dirs: Vec<PathBuf> = ["ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"]
+        .iter()
+        .filter_map(|v| std::env::var(v).ok())
+        .map(PathBuf::from)
+        .collect();
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        dirs.push(PathBuf::from(local).join("Programs"));
+    }
+    dirs.into_iter().map(|d| d.join("FileZilla FTP Client").join("filezilla.exe")).find(|p| p.exists())
 }
 
 fn open_url(app: &AppHandle, url: String) {

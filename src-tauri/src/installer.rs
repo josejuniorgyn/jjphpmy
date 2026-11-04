@@ -353,6 +353,17 @@ pub(crate) async fn install_in(
     let rep = Reporter { emit, id: pkg.id.clone(), version: info.version.clone() };
     fs::create_dir_all(tmp).map_err(|e| format!("Não foi possível criar {}: {e}", tmp.display()))?;
 
+    // Fonte "manual" (FileZilla): o site oficial recusa downloads automáticos,
+    // então só abre a página oficial no navegador.
+    if pkg.source.kind == "manual" {
+        let _ = hidden(std::process::Command::new("explorer").arg(&d.url)).spawn();
+        rep.stage(
+            "done",
+            format!("Abri a página oficial de {} no navegador: baixe e instale por lá.", pkg.name),
+        );
+        return Ok(None);
+    }
+
     if pkg.id == "vcredist" {
         install_vcredist(&rep, d, tmp).await?;
         rep.stage("done", "Pronto.");
@@ -495,6 +506,7 @@ mod tests {
         for (id, variant, exe) in [
             ("nginx", None, "nginx.exe"),
             ("mailpit", None, "mailpit.exe"),
+            ("notepadpp", None, "notepad++.exe"),
             ("apache", None, r"bin\httpd.exe"),
             ("phpmyadmin", None, "index.php"),
             ("php", Some("nts"), "php-cgi.exe"),

@@ -434,6 +434,10 @@ fn register(state: &AppState, pkg: InstalledPackage) -> Result<(), String> {
     let mut cfg = state.config.lock().unwrap();
     cfg.installed.retain(|p| !p.same(&pkg.id, &pkg.version, pkg.variant.as_deref()));
     let has_active = cfg.installed.iter().any(|p| p.id == pkg.id && p.variant == pkg.variant && p.active);
+    // Notepad++ instalado vira o editor do menu "Editar configuração" (se ainda era o Bloco de Notas).
+    if pkg.id == "notepadpp" && cfg.settings.editor.eq_ignore_ascii_case("notepad.exe") {
+        cfg.settings.editor = std::path::Path::new(&pkg.path).join("notepad++.exe").display().to_string();
+    }
     // Pacote novo com serviço: já vem marcado como "Ativado" para o "Iniciar tudo".
     if let Some(svc) = cfg.services.iter_mut().find(|s| s.id == pkg.id) {
         svc.enabled = true;

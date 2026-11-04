@@ -419,6 +419,8 @@ pub async fn fetch_online(pkg: &Package) -> Result<Vec<VersionInfo>, String> {
         "python-files" => parse_python(&get_text(&src.url).await?)?,
         "github-releases" => parse_github(&get_text(&src.url).await?, src.asset_pattern.as_deref().unwrap_or(".*"))?,
         "static" => fallback(pkg),
+        // Sem download automático: a "versão" é a página oficial, aberta no navegador.
+        "manual" => vec![VersionInfo::single("site oficial", &src.url)],
         other => return Err(format!("Tipo de fonte desconhecido: '{other}'")),
     };
     sort_desc(&mut list);
@@ -509,6 +511,21 @@ mod tests {
 
     fn is_sha256(s: &Option<String>) -> bool {
         s.as_ref().is_some_and(|s| s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()))
+    }
+
+    #[test]
+    fn notepadpp_portable_zip_only() {
+        let catalog = Catalog::embedded();
+        let pattern = catalog.get("notepadpp").unwrap().source.asset_pattern.clone().unwrap();
+        let json = r#"[{"tag_name":"v8.9.8.1","assets":[
+            {"name":"npp.8.9.8.1.portable.7z","browser_download_url":"a"},
+            {"name":"npp.8.9.8.1.portable.arm64.zip","browser_download_url":"b"},
+            {"name":"npp.8.9.8.1.portable.minimalist.x64.7z","browser_download_url":"c"},
+            {"name":"npp.8.9.8.1.portable.x64.zip","browser_download_url":"https://x/npp.8.9.8.1.portable.x64.zip","digest":"sha256:beddf5548e75c97930d1575ba1c7d113e6e2b33d0a200310e734ca08e225f414"}]}]"#;
+        let list = parse_github(json, &pattern).unwrap();
+        assert_eq!(versions(&list), ["8.9.8.1"]);
+        assert!(list[0].downloads[0].url.ends_with("portable.x64.zip"));
+        assert!(is_sha256(&list[0].downloads[0].sha256));
     }
 
     #[test]
