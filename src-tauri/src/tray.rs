@@ -53,6 +53,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             &item("www", "Abrir pasta www")?,
             &item("backup", "Fazer backup agora")?,
             &item("notepadpp", "Notepad++")?,
+            &item("winscp", "WinSCP")?,
             &item("filezilla", "FileZilla")?,
             &sep()?,
             &item("settings", "Configurações...")?,
@@ -131,19 +132,8 @@ fn on_menu(app: &AppHandle, id: &str) {
                 notify(&app, msg);
             });
         }
-        "notepadpp" => {
-            let path = app.state::<AppState>().config.lock().unwrap().installed.iter()
-                .find(|p| p.id == "notepadpp" && p.active)
-                .map(|p| PathBuf::from(&p.path).join("notepad++.exe"));
-            match path.filter(|p| p.exists()) {
-                Some(exe) => {
-                    if let Err(e) = Command::new(exe).spawn() {
-                        notify(app, format!("Não foi possível abrir o Notepad++: {e}"));
-                    }
-                }
-                None => notify(app, "Notepad++ não está instalado. Instale na aba Pacotes (Ferramentas)."),
-            }
-        }
+        "notepadpp" => open_tool(app, "notepadpp", "notepad++.exe", "Notepad++"),
+        "winscp" => open_tool(app, "winscp", "WinSCP.exe", "WinSCP"),
         "filezilla" => match filezilla_exe() {
             Some(exe) => {
                 if let Err(e) = Command::new(exe).spawn() {
@@ -181,6 +171,21 @@ fn on_menu(app: &AppHandle, id: &str) {
         }
         other if other.starts_with("edit:") => edit_file(app, other),
         _ => {}
+    }
+}
+
+/// Abre uma ferramenta instalada pelo JJPHPMY (versão ativa em `bin\{id}`).
+fn open_tool(app: &AppHandle, id: &str, exe: &str, name: &str) {
+    let path = app.state::<AppState>().config.lock().unwrap().installed.iter()
+        .find(|p| p.id == id && p.active)
+        .map(|p| PathBuf::from(&p.path).join(exe));
+    match path.filter(|p| p.exists()) {
+        Some(exe) => {
+            if let Err(e) = Command::new(exe).spawn() {
+                notify(app, format!("Não foi possível abrir o {name}: {e}"));
+            }
+        }
+        None => notify(app, format!("{name} não está instalado. Instale na aba Pacotes (Ferramentas).")),
     }
 }
 

@@ -237,6 +237,22 @@
       ]
     },
     {
+      "id": "winscp",
+      "name": "WinSCP",
+      "category": "tool",
+      "description": "Cliente SFTP, FTP, FTPS, SCP, WebDAV e S3, grátis e de código aberto. Versão portátil oficial.",
+      "source": {
+        "type": "sourceforge",
+        "url": "https://sourceforge.net/projects/winscp/rss?path=/WinSCP",
+        "assetPattern": "https://sourceforge\\.net/projects/winscp/files/WinSCP/(\\d+(?:\\.\\d+)+)/WinSCP-\\d+(?:\\.\\d+)+-Portable\\.zip/download",
+        "urlTemplate": "https://sourceforge.net/projects/winscp/files/WinSCP/{v}/WinSCP-{v}-Portable.zip/download",
+        "notes": "Espelho oficial usado pelo próprio winscp.net; não publica SHA-256"
+      },
+      "fallbackVersions": [
+        "6.7"
+      ]
+    },
+    {
       "id": "filezilla",
       "name": "FileZilla",
       "category": "tool",

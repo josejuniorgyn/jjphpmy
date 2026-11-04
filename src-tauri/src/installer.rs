@@ -113,6 +113,8 @@ pub fn zip_root<'a>(names: impl IntoIterator<Item = &'a Path>) -> Option<PathBuf
 /// Nome do arquivo no fim da URL.
 fn file_name_of(url: &str) -> String {
     let path = url.split(['?', '#']).next().unwrap_or(url);
+    // SourceForge: ".../WinSCP-6.7-Portable.zip/download"
+    let path = path.strip_suffix("/download").unwrap_or(path);
     path.rsplit('/').next().filter(|s| !s.is_empty()).unwrap_or("download.bin").to_string()
 }
 
@@ -504,6 +506,7 @@ mod tests {
             ("nginx", None, "nginx.exe"),
             ("mailpit", None, "mailpit.exe"),
             ("notepadpp", None, "notepad++.exe"),
+            ("winscp", None, "WinSCP.exe"),
             ("apache", None, r"bin\httpd.exe"),
             ("phpmyadmin", None, "index.php"),
             ("php", Some("nts"), "php-cgi.exe"),
@@ -530,5 +533,6 @@ mod tests {
         assert_eq!(pick(&list, None, Some("nts")).unwrap().1.url, "nts.zip");
         assert!(pick(&list, Some("7.0.0"), None).is_err());
         assert_eq!(file_name_of("https://x/y/php-8.5.zip?a=1"), "php-8.5.zip");
+        assert_eq!(file_name_of("https://sf.net/files/WinSCP/6.7/WinSCP-6.7-Portable.zip/download"), "WinSCP-6.7-Portable.zip");
     }
 }

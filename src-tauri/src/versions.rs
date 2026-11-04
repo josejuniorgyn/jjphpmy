@@ -353,6 +353,21 @@ pub fn parse_github(text: &str, pattern: &str) -> Result<Vec<VersionInfo>, Strin
     Ok(out)
 }
 
+/// RSS de arquivos de um projeto do SourceForge (WinSCP). `pattern` casa o
+/// link de download inteiro e o grupo 1 é a versão; RCs ficam de fora pelo
+/// próprio padrão. O SourceForge não publica SHA-256.
+pub fn parse_sourceforge(text: &str, pattern: &str) -> Result<Vec<VersionInfo>, String> {
+    let re = Regex::new(pattern).map_err(|e| format!("assetPattern inválido '{pattern}': {e}"))?;
+    let mut out: Vec<VersionInfo> = Vec::new();
+    for c in re.captures_iter(text) {
+        let Some(v) = c.get(1).map(|m| m.as_str()) else { continue };
+        if !out.iter().any(|x| x.version == v) {
+            out.push(VersionInfo::single(v, &c[0]));
+        }
+    }
+    Ok(out)
+}
+
 /* ---------- Fallback ---------- */
 
 /// Lista de reserva do catálogo; monta a URL quando há `urlTemplate`
@@ -421,6 +436,7 @@ pub async fn fetch_online(pkg: &Package) -> Result<Vec<VersionInfo>, String> {
         "static" => fallback(pkg),
         // Sem download automático: a "versão" é a página oficial, aberta no navegador.
         "manual" => vec![VersionInfo::single("site oficial", &src.url)],
+        "sourceforge" => parse_sourceforge(&get_text(&src.url).await?, src.asset_pattern.as_deref().unwrap_or("$^"))?,
         other => return Err(format!("Tipo de fonte desconhecido: '{other}'")),
     };
     sort_desc(&mut list);
@@ -511,6 +527,16 @@ mod tests {
 
     fn is_sha256(s: &Option<String>) -> bool {
         s.as_ref().is_some_and(|s| s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()))
+    }
+
+    #[test]
+    fn winscp_from_sourceforge_rss() {
+        let catalog = Catalog::embedded();
+        let pattern = catalog.get("winscp").unwrap().source.asset_pattern.clone().unwrap();
+        let rss = "<item><link>https://sourceforge.net/projects/winscp/files/WinSCP/6.7/WinSCP-6.7-Portable.zip/download</link></item>                   <item><link>https://sourceforge.net/projects/winscp/files/WinSCP/6.7/WinSCP-6.7.msi/download</link></item>                   <item><link>https://sourceforge.net/projects/winscp/files/WinSCP/6.6.4%20RC/WinSCP-6.6.4.RC-Portable.zip/download</link></item>                   <item><link>https://sourceforge.net/projects/winscp/files/WinSCP/6.5.7/WinSCP-6.5.7-Portable.zip/download</link></item>";
+        let list = sorted(parse_sourceforge(rss, &pattern).unwrap());
+        assert_eq!(versions(&list), ["6.7", "6.5.7"]);
+        assert!(list[0].downloads[0].url.ends_with("/6.7/WinSCP-6.7-Portable.zip/download"));
     }
 
     #[test]
