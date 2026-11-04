@@ -126,7 +126,7 @@ Todas podem ser alteradas na aba **Serviços e Portas**.
 
 ## Contribua com o projeto ☕
 
-O JJPHPMY é gratuito. Se ele ajuda no seu dia a dia, apoie pelo **PIX**: na aba **Sobre** do programa há QR Codes de R$ 20 a R$ 100.
+O JJPHPMY é gratuito. Se ele ajuda no seu dia a dia, apoie pelo **PIX**: na aba **Sobre** do programa há QR Codes.
 
 Também é muito bem-vindo: ⭐ uma estrela no repositório, [sugestões e relatos de problemas](https://github.com/josejuniorgyn/jjphpmy/issues) e pull requests.
 
