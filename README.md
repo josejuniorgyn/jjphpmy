@@ -141,10 +141,6 @@ npm test        # testes
 npm run build   # gera o instalador
 ```
 
-Arquitetura, decisões e roteiro completos: [`CLAUDE.md`](CLAUDE.md).
-
----
-
 <div align="center">
 
 Feito por **Jose Antonio de Melo Junior** · [josejuniorgyn@gmail.com](mailto:josejuniorgyn@gmail.com)
