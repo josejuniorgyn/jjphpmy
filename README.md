@@ -50,8 +50,6 @@ Gerar o instalador (`src-tauri/target/release/bundle/nsis/jjphpmy_0.1.0_x64-setu
 npm run build
 ```
 
-## 3. Instalador atual
+## 3. Instale a última versão pelo executável em Release ou pelo próprio JJPHPMY
 
-Se preferir clique em Releases e baixe a última versão do instalador.
-
-Quem já usa o JJPHPMY pode atualizar em Configurações → Verificar atualização agora.
+Clique em Releases e baixe a última versão do instalador ou quem já usa o JJPHPMY pode atualizar em Configurações → Verificar atualização agora.
