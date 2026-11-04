@@ -4,3 +4,4 @@ src-tauri/gen/
 release/
 CLAUDE.md
 docs/
+.claude/
