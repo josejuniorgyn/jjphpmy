@@ -52,6 +52,6 @@ npm run build
 
 ## 3. Instalador atual
 
-Se preferir clique em Releases e baixe o instalador, ou clique no link abaixo:
+Se preferir clique em Releases e baixe a última versão do instalador.
 
-[jjphpmy_0.2.1_x64-setup.exe](https://github.com/josejuniorgyn/jjphpmy/releases/download/v0.2.1/jjphpmy_0.2.1_x64-setup.exe)
+Quem já usa o JJPHPMY pode atualizar em Configurações → Verificar atualização agora.
