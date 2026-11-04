@@ -353,14 +353,11 @@ pub(crate) async fn install_in(
     let rep = Reporter { emit, id: pkg.id.clone(), version: info.version.clone() };
     fs::create_dir_all(tmp).map_err(|e| format!("Não foi possível criar {}: {e}", tmp.display()))?;
 
-    // Fonte "manual" (FileZilla): o site oficial recusa downloads automáticos,
-    // então só abre a página oficial no navegador.
+    // Fonte "manual" (FileZilla): o site oficial recusa downloads automáticos.
+    // Quem abre a página no navegador é `install_packages` (lib.rs), com o
+    // opener do Tauri, que tem o AppHandle.
     if pkg.source.kind == "manual" {
-        let _ = hidden(std::process::Command::new("explorer").arg(&d.url)).spawn();
-        rep.stage(
-            "done",
-            format!("Abri a página oficial de {} no navegador: baixe e instale por lá.", pkg.name),
-        );
+        rep.stage("done", format!("Abri a página oficial de {} no navegador: baixe e instale por lá. ({})", pkg.name, d.url));
         return Ok(None);
     }
 

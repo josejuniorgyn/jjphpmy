@@ -501,6 +501,12 @@ async fn install_packages(
             }
             match installer::install(&app, &pkg, version.clone(), variant).await {
                 Ok(Some(installed)) => register(&state, installed)?,
+                Ok(None) if pkg.source.kind == "manual" => {
+                    use tauri_plugin_opener::OpenerExt;
+                    if let Err(e) = app.opener().open_url(pkg.source.url.clone(), None::<&str>) {
+                        toast(&app, &[format!("Não foi possível abrir o navegador ({e}). Abra você: {}", pkg.source.url)]);
+                    }
+                }
                 Ok(None) => {}
                 Err(e) => {
                     let _ = app.emit(
