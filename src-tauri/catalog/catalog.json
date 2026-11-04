@@ -121,6 +121,24 @@
       ]
     },
     {
+      "id": "composer",
+      "name": "Composer",
+      "category": "language",
+      "description": "Gerenciador de pacotes do PHP (Laravel, Symfony...). Comando composer no Terminal e no PATH.",
+      "requires": [
+        "php"
+      ],
+      "source": {
+        "type": "composer",
+        "url": "https://getcomposer.org/versions",
+        "urlTemplate": "https://getcomposer.org/download/{v}/composer.phar",
+        "notes": "composer.phar oficial; SHA-256 em {url}.sha256sum"
+      },
+      "fallbackVersions": [
+        "2.11.1"
+      ]
+    },
+    {
       "id": "phpmyadmin",
       "name": "phpMyAdmin",
       "category": "tool",
@@ -219,6 +237,21 @@
       },
       "fallbackVersions": [
         "1.33.0"
+      ]
+    },
+    {
+      "id": "git",
+      "name": "Git",
+      "category": "tool",
+      "description": "Controle de versão (git, Git Bash e login do GitHub). Versão portátil oficial do Git for Windows.",
+      "source": {
+        "type": "github-releases",
+        "url": "https://api.github.com/repos/git-for-windows/git/releases?per_page=30",
+        "assetPattern": "^PortableGit-(\\d+(?:\\.\\d+)+)-64-bit\\.7z\\.exe$",
+        "notes": "Arquivo .7z.exe que se extrai sozinho (-y -o{pasta})"
+      },
+      "fallbackVersions": [
+        "2.56.0.4"
       ]
     },
     {

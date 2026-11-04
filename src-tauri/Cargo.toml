@@ -1,6 +1,6 @@
 [package]
 name = "jjphpmy"
-version = "0.2.2"
+version = "0.3.0"
 description = "jjphpmy - ambiente de desenvolvimento local para Windows"
 edition = "2021"
 

@@ -710,6 +710,49 @@ async function restoreBackup(button) {
   button.disabled = false;
 }
 
+/* ---------- Novo projeto ---------- */
+
+let templates = [];
+
+async function renderTemplates() {
+  if (templates.length) return;
+  try {
+    templates = await invoke("project_templates");
+  } catch (err) {
+    return toast(err, true);
+  }
+  const select = $("#proj-template");
+  select.replaceChildren(...templates.map((t) => new Option(t.name, t.id)));
+  const describe = () => {
+    $("#proj-description").textContent = templates.find((t) => t.id === select.value)?.description ?? "";
+  };
+  select.addEventListener("change", describe);
+  describe();
+}
+
+async function createProject(button) {
+  const name = $("#proj-name").value.trim();
+  const template = $("#proj-template").value;
+  if (!name) return toast("Informe o nome da pasta do projeto.", true);
+  const log = $("#project-log");
+  log.textContent = "";
+  log.hidden = false;
+  button.disabled = true;
+  button.textContent = "Criando... (pode levar alguns minutos)";
+  try {
+    const msg = await invoke("create_project", { template, name });
+    log.textContent += `\n${msg}\n`;
+    toast(msg);
+    $("#proj-name").value = "";
+  } catch (err) {
+    log.textContent += `\nErro: ${err}\n`;
+    toast(err, true);
+  }
+  log.scrollTop = log.scrollHeight;
+  button.textContent = "Criar projeto";
+  button.disabled = false;
+}
+
 /* ---------- Hosts virtuais ---------- */
 
 async function renderSites() {
@@ -833,6 +876,14 @@ async function init() {
   });
   $("#btn-laragon-refresh").addEventListener("click", () => renderLaragon());
   $("#btn-imp-browse").addEventListener("click", browseSource);
+  $("#btn-create-project").addEventListener("click", (e) => createProject(e.currentTarget));
+  await listen("project-log", (e) => {
+    const log = $("#project-log");
+    log.hidden = false;
+    log.textContent += `${e.payload}\n`;
+    log.scrollTop = log.scrollHeight;
+  });
+  document.querySelector('.tab[data-tab="projetos"]').addEventListener("click", renderTemplates);
   $("#imp-root").addEventListener("input", renderSourceInfo);
   $("#btn-restore").addEventListener("click", (e) => restoreBackup(e.currentTarget));
   // A detecção lê o disco: só quando a aba Importar é aberta.
@@ -848,7 +899,10 @@ async function init() {
   $("#btn-install").addEventListener("click", installSelected);
   $("#btn-refresh-versions").addEventListener("click", refreshVersions);
 
-  await listen("navigate", (e) => showTab(e.payload));
+  await listen("navigate", (e) => {
+    showTab(e.payload);
+    if (e.payload === "projetos") renderTemplates();
+  });
   await listen("toast", (e) => toast(e.payload));
   await listen("install-progress", (e) => onProgress(e.payload));
 

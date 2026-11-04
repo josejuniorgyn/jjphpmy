@@ -7,6 +7,7 @@ mod envpath;
 mod installer;
 mod laragon;
 mod pix;
+mod projects;
 mod services;
 mod ssl;
 mod tray;
@@ -296,6 +297,33 @@ async fn import_run(app: AppHandle, root: String, www: bool, mysql: bool, passwo
         }
         log("Concluído.".into());
         Ok(summary.join("\n"))
+    })
+    .await
+    .map_err(|e| e.to_string());
+    BUSY.store(false, Ordering::SeqCst);
+    result?
+}
+
+/* ---------- Novo projeto ---------- */
+
+#[tauri::command]
+fn project_templates() -> Vec<projects::Template> {
+    projects::TEMPLATES.to_vec()
+}
+
+/// Cria um projeto em www a partir de um modelo (evento `project-log` com a saída).
+#[tauri::command]
+async fn create_project(app: AppHandle, template: String, name: String) -> Result<String, String> {
+    static BUSY: AtomicBool = AtomicBool::new(false);
+    if BUSY.swap(true, Ordering::SeqCst) {
+        return Err("Já existe um projeto sendo criado.".into());
+    }
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        let cfg = app.state::<AppState>().config.lock().unwrap().clone();
+        let log = |msg: String| {
+            let _ = app.emit("project-log", msg);
+        };
+        projects::create(&cfg, &layout(), &template, name.trim(), &log)
     })
     .await
     .map_err(|e| e.to_string());
@@ -888,6 +916,8 @@ pub fn run() {
             backup_restore,
             import_detect,
             import_run,
+            project_templates,
+            create_project,
             check_update,
             pix_qr,
         ])

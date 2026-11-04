@@ -114,5 +114,12 @@
   "Copiar os sites (www do Laragon ou htdocs do XAMPP; arquivos que já existem não são sobrescritos)": "Copy the sites (Laragon www or XAMPP htdocs; existing files are not overwritten)",
   "Importar os bancos de dados (MySQL ou MariaDB)": "Import the databases (MySQL or MariaDB)",
   "Senha do root no banco de origem": "Root password of the source database",
-  "Escolha a pasta do Laragon ou do XAMPP.": "Choose the Laragon or XAMPP folder."
+  "Escolha a pasta do Laragon ou do XAMPP.": "Choose the Laragon or XAMPP folder.",
+  "Projetos": "Projects",
+  "Novo projeto": "New project",
+  "Modelo": "Template",
+  "Nome da pasta": "Folder name",
+  "Criar projeto": "Create project",
+  "O projeto é criado dentro do Document Root e já ganha o site {nome}.test. Os modelos usam o PHP, o Composer e o Node.js instalados na aba Pacotes.": "The project is created inside the Document Root and gets its {name}.test site. Templates use the PHP, Composer and Node.js installed in the Packages tab.",
+  "Informe o nome da pasta do projeto.": "Enter the project folder name."
 }

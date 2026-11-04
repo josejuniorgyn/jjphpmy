@@ -368,6 +368,24 @@ pub fn parse_sourceforge(text: &str, pattern: &str) -> Result<Vec<VersionInfo>, 
     Ok(out)
 }
 
+/// https://getcomposer.org/versions: versões estáveis (a atual e a LTS).
+pub fn parse_composer(text: &str) -> Result<Vec<VersionInfo>, String> {
+    let root: Value = json(text)?;
+    let empty = Vec::new();
+    Ok(root["stable"]
+        .as_array()
+        .unwrap_or(&empty)
+        .iter()
+        .filter_map(|v| {
+            let version = v["version"].as_str()?;
+            let url = format!("https://getcomposer.org{}", v["path"].as_str()?);
+            let mut info = VersionInfo::single(version, &url).sha256_url(format!("{url}.sha256sum"));
+            info.label = v["lts"].as_bool().filter(|l| *l).map(|_| "LTS".to_string());
+            Some(info)
+        })
+        .collect())
+}
+
 /* ---------- Fallback ---------- */
 
 /// Lista de reserva do catálogo; monta a URL quando há `urlTemplate`
@@ -436,6 +454,7 @@ pub async fn fetch_online(pkg: &Package) -> Result<Vec<VersionInfo>, String> {
         "static" => fallback(pkg),
         // Sem download automático: a "versão" é a página oficial, aberta no navegador.
         "manual" => vec![VersionInfo::single("site oficial", &src.url)],
+        "composer" => parse_composer(&get_text(&src.url).await?)?,
         "sourceforge" => parse_sourceforge(&get_text(&src.url).await?, src.asset_pattern.as_deref().unwrap_or("$^"))?,
         other => return Err(format!("Tipo de fonte desconhecido: '{other}'")),
     };
@@ -527,6 +546,19 @@ mod tests {
 
     fn is_sha256(s: &Option<String>) -> bool {
         s.as_ref().is_some_and(|s| s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()))
+    }
+
+    #[test]
+    fn composer_stable_and_lts() {
+        let text = r#"{"stable":[
+            {"path":"/download/2.11.1/composer.phar","version":"2.11.1","lts":false},
+            {"path":"/download/2.2.31/composer.phar","version":"2.2.31","lts":true}],
+            "preview":[{"path":"/download/2.12.0-RC1/composer.phar","version":"2.12.0-RC1"}]}"#;
+        let list = parse_composer(text).unwrap();
+        assert_eq!(versions(&list), ["2.11.1", "2.2.31"]);
+        assert_eq!(list[1].label.as_deref(), Some("LTS"));
+        assert_eq!(list[0].downloads[0].url, "https://getcomposer.org/download/2.11.1/composer.phar");
+        assert!(list[0].downloads[0].sha256_url.as_deref().unwrap().ends_with(".phar.sha256sum"));
     }
 
     #[test]

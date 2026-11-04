@@ -256,8 +256,44 @@ fn extract(zip_path: &Path, dest: &Path, on_progress: impl Fn(u64, u64)) -> Resu
     fs::rename(&partial, dest).map_err(|e| format!("Não foi possível mover para {}: {e}", dest.display()))
 }
 
+/// Pacote que é um arquivo só (composer.phar): copia para a pasta da versão.
+fn install_single_file(file: &Path, dest: &Path) -> Result<(), String> {
+    let partial = dest.with_extension("partial");
+    let _ = fs::remove_dir_all(&partial);
+    fs::create_dir_all(&partial).map_err(|e| format!("Não foi possível criar {}: {e}", partial.display()))?;
+    let name = file.file_name().ok_or("Arquivo sem nome.")?;
+    fs::copy(file, partial.join(name)).map_err(|e| format!("Não foi possível copiar {}: {e}", file.display()))?;
+    if dest.exists() {
+        fs::remove_dir_all(dest).map_err(|e| format!("Não foi possível substituir {}: {e}", dest.display()))?;
+    }
+    fs::rename(&partial, dest).map_err(|e| format!("Não foi possível mover para {}: {e}", dest.display()))
+}
+
+/// Arquivo .7z.exe que se extrai sozinho (PortableGit): `-y -o{pasta}`,
+/// sem janela. Também grava em `.partial` e só renomeia no fim.
+fn extract_self(file: &Path, dest: &Path) -> Result<(), String> {
+    let partial = dest.with_extension("partial");
+    let _ = fs::remove_dir_all(&partial);
+    let status = hidden(std::process::Command::new(file).arg("-y").arg(format!("-o{}", partial.display())))
+        .status()
+        .map_err(|e| format!("Não foi possível executar {}: {e}", file.display()))?;
+    let has_files = fs::read_dir(&partial).map(|mut d| d.next().is_some()).unwrap_or(false);
+    if !status.success() || !has_files {
+        let _ = fs::remove_dir_all(&partial);
+        return Err(format!("A extração de {} falhou ({status}).", file.display()));
+    }
+    if dest.exists() {
+        fs::remove_dir_all(dest).map_err(|e| format!("Não foi possível substituir {}: {e}", dest.display()))?;
+    }
+    fs::rename(&partial, dest).map_err(|e| format!("Não foi possível mover para {}: {e}", dest.display()))
+}
+
 /// Ajustes depois de extrair.
 fn post_install(id: &str, dir: &Path) -> Result<(), String> {
+    if id == "composer" {
+        // `composer` no Terminal e no PATH: chama o PHP ativo (do PATH) com o .phar.
+        fs::write(dir.join("composer.bat"), "@php \"%~dp0composer.phar\" %*\r\n").map_err(|e| e.to_string())?;
+    }
     if id == "python" {
         // O Python "embeddable" vem com `#import site` comentado; sem isso o pip não funciona.
         for entry in fs::read_dir(dir).map_err(|e| e.to_string())?.flatten() {
@@ -389,7 +425,13 @@ pub(crate) async fn install_in(
     rep.stage("extract", "Extraindo...");
     let (zp, dp, r) = (zip_path.clone(), dest.clone(), rep.clone());
     tauri::async_runtime::spawn_blocking(move || {
-        extract(&zp, &dp, |done, total| r.send("extract", done, Some(total), None))?;
+        if zp.extension().is_some_and(|e| e == "phar") {
+            install_single_file(&zp, &dp)?;
+        } else if zp.to_string_lossy().to_lowercase().ends_with(".7z.exe") {
+            extract_self(&zp, &dp)?;
+        } else {
+            extract(&zp, &dp, |done, total| r.send("extract", done, Some(total), None))?;
+        }
         post_install(&r.id, &dp)
     })
     .await
@@ -507,6 +549,8 @@ mod tests {
             ("mailpit", None, "mailpit.exe"),
             ("notepadpp", None, "notepad++.exe"),
             ("winscp", None, "WinSCP.exe"),
+            ("composer", None, "composer.bat"),
+            ("git", None, r"cmd\git.exe"),
             ("apache", None, r"bin\httpd.exe"),
             ("phpmyadmin", None, "index.php"),
             ("php", Some("nts"), "php-cgi.exe"),

@@ -10,8 +10,9 @@ use std::path::{Path, PathBuf};
 /// Memcached e Mailpit ficam de fora: quem os inicia é o próprio JJPHPMY.
 fn subdirs(id: &str) -> &'static [&'static str] {
     match id {
-        "php" | "nodejs" => &[""],
+        "php" | "nodejs" | "composer" => &[""],
         "python" => &["", "Scripts"],
+        "git" => &["cmd"],
         "mysql" | "postgresql" | "mongodb" => &["bin"],
         _ => &[],
     }

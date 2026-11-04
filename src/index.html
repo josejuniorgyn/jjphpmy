@@ -14,6 +14,7 @@
       <button class="tab" data-tab="instalados">Instalados</button>
       <button class="tab" data-tab="configuracoes">Configurações</button>
       <button class="tab" data-tab="servicos">Serviços e Portas</button>
+      <button class="tab" data-tab="projetos">Projetos</button>
       <button class="tab" data-tab="importar">Importar</button>
       <button class="tab" data-tab="sobre">Sobre</button>
     </nav>
@@ -125,6 +126,22 @@
           <button id="btn-regenerate" class="secondary" type="button">Recriar arquivos de configuração</button>
         </div>
       </form>
+    </section>
+
+    <!-- Novo projeto -->
+    <section id="projetos" class="panel">
+      <fieldset>
+        <legend>Novo projeto</legend>
+        <p class="hint">O projeto é criado dentro do Document Root e já ganha o site {nome}.test.
+          Os modelos usam o PHP, o Composer e o Node.js instalados na aba Pacotes.</p>
+        <label>Modelo <select id="proj-template"></select></label>
+        <p id="proj-description" class="hint"></p>
+        <label>Nome da pasta <input type="text" id="proj-name" placeholder="minha-loja" maxlength="60"></label>
+        <div class="inline-actions">
+          <button id="btn-create-project" class="primary" type="button">Criar projeto</button>
+        </div>
+        <pre id="project-log" class="log" hidden></pre>
+      </fieldset>
     </section>
 
     <!-- Importar do Laragon ou do XAMPP e restaurar backup -->

@@ -51,9 +51,11 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             &item("phpmyadmin", "phpMyAdmin")?,
             &item("mailpit", "Mailpit (e-mails)")?,
             &item("www", "Abrir pasta www")?,
+            &item("new_project", "Novo projeto...")?,
             &item("backup", "Fazer backup agora")?,
             &item("notepadpp", "Notepad++")?,
             &item("winscp", "WinSCP")?,
+            &item("gitbash", "Git Bash")?,
             &item("filezilla", "FileZilla")?,
             &sep()?,
             &item("settings", "Configurações...")?,
@@ -109,6 +111,7 @@ fn on_menu(app: &AppHandle, id: &str) {
         "settings" => show_window(app, Some("configuracoes")),
         "services" => show_window(app, Some("servicos")),
         "about" => show_window(app, Some("sobre")),
+        "new_project" => show_window(app, Some("projetos")),
         "start_all" => {
             let app = app.clone();
             std::thread::spawn(move || {
@@ -134,6 +137,7 @@ fn on_menu(app: &AppHandle, id: &str) {
         }
         "notepadpp" => open_tool(app, "notepadpp", "notepad++.exe", "Notepad++"),
         "winscp" => open_tool(app, "winscp", "WinSCP.exe", "WinSCP"),
+        "gitbash" => open_tool(app, "git", "git-bash.exe", "Git"),
         "filezilla" => match filezilla_exe() {
             Some(exe) => {
                 if let Err(e) = Command::new(exe).spawn() {
