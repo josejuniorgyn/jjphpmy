@@ -134,13 +134,6 @@ Também é muito bem-vindo: ⭐ uma estrela no repositório, [sugestões e relat
 
 Feito com **[Tauri 2](https://tauri.app)** (Rust + HTML/JS), por isso é tão leve.
 
-```bash
-npm install
-npm run dev     # roda em modo desenvolvimento
-npm test        # testes
-npm run build   # gera o instalador
-```
-
 <div align="center">
 
 Feito por **Jose Antonio de Melo Junior** · [josejuniorgyn@gmail.com](mailto:josejuniorgyn@gmail.com)
