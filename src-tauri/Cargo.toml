@@ -1,6 +1,6 @@
 [package]
 name = "jjphpmy"
-version = "0.2.1"
+version = "0.2.2"
 description = "jjphpmy - ambiente de desenvolvimento local para Windows"
 edition = "2021"
 
@@ -17,6 +17,7 @@ tauri-plugin-autostart = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 regex = "1"

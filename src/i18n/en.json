@@ -106,5 +106,13 @@
   "Nenhum pacote instalado para configurar.": "No packages installed to configure.",
   "Código PIX copiado.": "PIX code copied.",
   "Nenhuma atualização disponível.": "No updates available.",
-  "Procurando atualização...": "Checking for updates..."
+  "Procurando atualização...": "Checking for updates...",
+  "Traga os sites e os bancos de dados do Laragon ou do XAMPP.": "Bring sites and databases from Laragon or XAMPP.",
+  "Procurando...": "Searching...",
+  "Pasta de origem": "Source folder",
+  "Escolher pasta...": "Choose folder...",
+  "Copiar os sites (www do Laragon ou htdocs do XAMPP; arquivos que já existem não são sobrescritos)": "Copy the sites (Laragon www or XAMPP htdocs; existing files are not overwritten)",
+  "Importar os bancos de dados (MySQL ou MariaDB)": "Import the databases (MySQL or MariaDB)",
+  "Senha do root no banco de origem": "Root password of the source database",
+  "Escolha a pasta do Laragon ou do XAMPP.": "Choose the Laragon or XAMPP folder."
 }

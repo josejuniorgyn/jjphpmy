@@ -127,16 +127,22 @@
       </form>
     </section>
 
-    <!-- Importar do Laragon e restaurar backup -->
+    <!-- Importar do Laragon ou do XAMPP e restaurar backup -->
     <section id="importar" class="panel">
       <fieldset>
-        <legend>Importar do Laragon</legend>
-        <p id="laragon-info" class="hint">Procurando o Laragon...</p>
-        <label class="check"><input type="checkbox" id="imp-www" checked> Copiar as pastas de www (arquivos que já existem não são sobrescritos)</label>
-        <label class="check"><input type="checkbox" id="imp-mysql" checked> Importar os bancos MySQL</label>
-        <label>Senha do root no MySQL do Laragon <input type="password" id="imp-password" placeholder="vazia, se nunca mudou"></label>
-        <p class="hint">O Laragon só é lido: nada é apagado nem alterado nele. Com MySQL 8.4 nos dois, a pasta de dados é copiada inteira
-          (mantém usuários e senhas); com versões diferentes, os bancos são exportados e importados.</p>
+        <legend>Importar</legend>
+        <p class="hint">Traga os sites e os bancos de dados do Laragon ou do XAMPP.</p>
+        <ul id="import-sources" class="sources"><li class="hint">Procurando...</li></ul>
+        <label>Pasta de origem
+          <input type="text" id="imp-root" placeholder="C:\laragon ou C:\xampp">
+          <button id="btn-imp-browse" class="secondary" type="button">Escolher pasta...</button>
+        </label>
+        <p id="import-info" class="hint"></p>
+        <label class="check"><input type="checkbox" id="imp-www" checked> Copiar os sites (www do Laragon ou htdocs do XAMPP; arquivos que já existem não são sobrescritos)</label>
+        <label class="check"><input type="checkbox" id="imp-mysql" checked> Importar os bancos de dados (MySQL ou MariaDB)</label>
+        <label>Senha do root no banco de origem <input type="password" id="imp-password" placeholder="vazia, se nunca mudou"></label>
+        <p class="hint">A origem só é lida: nada é apagado nem alterado nela. Laragon com MySQL 8.4 nos dois: a pasta de dados é copiada inteira
+          (mantém usuários e senhas). Versões diferentes ou XAMPP (que usa MariaDB): os bancos são exportados e importados.</p>
         <div class="inline-actions">
           <button id="btn-import" class="primary" type="button">Importar</button>
           <button id="btn-laragon-refresh" class="link" type="button">Verificar de novo</button>

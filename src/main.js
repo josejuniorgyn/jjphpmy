@@ -582,54 +582,99 @@ async function backupNow(button) {
 
 /* ---------- Importar do Laragon / restaurar ---------- */
 
-let laragon = null;
+/** Origens lidas: C:\laragon, C:\xampp e a pasta escolhida (se houver). */
+let sources = null;
 
-async function renderLaragon() {
-  const info = $("#laragon-info");
-  info.textContent = "Procurando o Laragon...";
+/** Origem da pasta do campo "Pasta de origem". */
+function selectedSource() {
+  const root = $("#imp-root").value.trim().toLowerCase();
+  return sources?.find((s) => s.root.toLowerCase() === root);
+}
+
+/** Descrição da origem: o que tem e como os bancos serão importados. */
+function describeSource(s) {
+  if (!s.found) return `${s.name} não encontrado em ${s.root}`;
+  const banco = s.mysql
+    ? `${s.mysql.mariadb ? "MariaDB" : "MySQL"} ${s.mysql.version} com ${s.mysql.dataMb.toLocaleString("pt-BR")} MB de dados`
+    : "sem banco de dados";
+  const sites = s.kind === "xampp" ? "htdocs" : "www";
+  return `${s.name} encontrado em ${s.root}: ${s.wwwItems} itens em ${sites}, ${banco}`;
+}
+
+async function renderLaragon(customPath) {
+  const list = $("#import-sources");
+  list.replaceChildren(el("li", "hint", "Procurando..."));
   try {
-    laragon = await invoke("laragon_detect");
+    sources = await invoke("import_detect", { path: customPath ?? ($("#imp-root").value.trim() || null) });
   } catch (err) {
     return toast(err, true);
   }
-  if (!laragon.found) {
-    info.textContent = `Laragon não encontrado em ${laragon.root}.`;
-    $("#btn-import").disabled = true;
+  // Uma linha para cada lugar padrão (Laragon e XAMPP), encontrado ou não.
+  list.replaceChildren(
+    ...sources.slice(0, 2).map((s) => el("li", s.found ? "found" : "hint", describeSource(s))),
+  );
+  if (!$("#imp-root").value.trim()) {
+    const first = sources.find((s) => s.found);
+    if (first) $("#imp-root").value = first.root;
+  }
+  renderSourceInfo();
+}
+
+/** Detalhes da pasta escolhida no campo. */
+function renderSourceInfo() {
+  const info = $("#import-info");
+  const s = selectedSource();
+  $("#btn-import").disabled = !s?.found;
+  if (!s) {
+    info.textContent = $("#imp-root").value.trim() ? 'Clique em "Verificar de novo" para ler esta pasta.' : "";
     return;
   }
-  const mysql = laragon.mysql
-    ? `MySQL ${laragon.mysql.version} com ${laragon.mysql.dataMb.toLocaleString("pt-BR")} MB de dados`
-    : "sem MySQL com dados";
-  const mine = config.installed.find((p) => p.id === "mysql" && p.active);
-  let text = `Encontrado em ${laragon.root}: ${laragon.wwwItems} itens em www, ${mysql}.`;
-  if (laragon.mysql && mine) {
-    const mm = (v) => v.split(".").slice(0, 2).join(".");
-    text += mm(mine.version) === mm(laragon.mysql.version)
-      ? ` O MySQL do JJPHPMY (${mine.version}) é da mesma linha: a pasta de dados será copiada.`
-      : ` O MySQL do JJPHPMY é ${mine.version}: os bancos serão exportados e importados.`;
-  } else if (laragon.mysql) {
-    text += " Instale o MySQL 8.4 na aba Pacotes antes de importar os bancos.";
+  if (!s.found) {
+    info.textContent = `Nenhum Laragon ou XAMPP em ${s.root}.`;
+    return;
   }
-  if (laragon.hasPostgresql) text += " O PostgreSQL do Laragon ainda não é importado.";
-  if (laragon.running.length) text += ` Programas do Laragon abertos: ${laragon.running.join(", ")}.`;
+  let text = `${describeSource(s)}.`;
+  const mine = config.installed.find((p) => p.id === "mysql" && p.active);
+  if (s.mysql && mine) {
+    const mm = (v) => v.split(".").slice(0, 2).join(".");
+    text += !s.mysql.mariadb && mm(mine.version) === mm(s.mysql.version)
+      ? ` O MySQL do JJPHPMY (${mine.version}) é da mesma linha: a pasta de dados será copiada.`
+      : ` Os bancos serão exportados e importados no MySQL ${mine.version} do JJPHPMY.`;
+  } else if (s.mysql) {
+    text += " Instale o MySQL na aba Pacotes antes de importar os bancos.";
+  }
+  if (s.hasPostgresql) text += " O PostgreSQL da origem ainda não é importado.";
+  if (s.running.length) text += ` Programas da origem abertos: ${s.running.join(", ")}.`;
   info.textContent = text;
-  $("#imp-mysql").disabled = !laragon.mysql;
-  $("#imp-mysql").checked = Boolean(laragon.mysql);
-  $("#btn-import").disabled = false;
+  $("#imp-mysql").disabled = !s.mysql;
+  $("#imp-mysql").checked = Boolean(s.mysql);
+}
+
+async function browseSource() {
+  try {
+    const dir = await window.__TAURI__.dialog.open({ directory: true, title: "Pasta do Laragon ou do XAMPP" });
+    if (!dir) return;
+    $("#imp-root").value = dir;
+    renderLaragon(dir);
+  } catch (err) {
+    toast(err, true);
+  }
 }
 
 async function importLaragon(button) {
+  const s = selectedSource();
+  if (!s?.found) return toast("Escolha a pasta do Laragon ou do XAMPP.", true);
   const www = $("#imp-www").checked;
   const mysql = $("#imp-mysql").checked;
   if (!www && !mysql) return toast("Marque o que deseja importar.", true);
-  const what = [www && "as pastas de www", mysql && "os bancos MySQL"].filter(Boolean).join(" e ");
-  if (!confirm(`Importar ${what} do Laragon?\nIsso pode demorar alguns minutos.`)) return;
+  const what = [www && "os sites", mysql && "os bancos de dados"].filter(Boolean).join(" e ");
+  if (!confirm(`Importar ${what} do ${s.name} (${s.root})?\nIsso pode demorar alguns minutos.`)) return;
   const log = $("#import-log");
   log.textContent = "";
   log.hidden = false;
   button.disabled = true;
   try {
-    const summary = await invoke("laragon_import", { www, mysql, password: $("#imp-password").value });
+    const summary = await invoke("import_run", { root: s.root, www, mysql, password: $("#imp-password").value });
     log.textContent += `\n${summary}\n`;
     toast("Importação concluída.");
   } catch (err) {
@@ -786,11 +831,13 @@ async function init() {
     }
     b.disabled = false;
   });
-  $("#btn-laragon-refresh").addEventListener("click", renderLaragon);
+  $("#btn-laragon-refresh").addEventListener("click", () => renderLaragon());
+  $("#btn-imp-browse").addEventListener("click", browseSource);
+  $("#imp-root").addEventListener("input", renderSourceInfo);
   $("#btn-restore").addEventListener("click", (e) => restoreBackup(e.currentTarget));
   // A detecção lê o disco: só quando a aba Importar é aberta.
   document.querySelector('.tab[data-tab="importar"]').addEventListener("click", () => {
-    if (!laragon) renderLaragon();
+    if (!sources) renderLaragon();
     renderBackupList();
   });
   $("#btn-backup").addEventListener("click", (e) => backupNow(e.currentTarget));

@@ -181,6 +181,10 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
   overflow: auto;
   white-space: pre-wrap;
 }
+.sources { margin: 6px 0 10px; padding-left: 18px; }
+.sources li { margin: 4px 0; }
+.sources li.found { color: var(--ok); }
+.sources li.hint { margin: 4px 0; }
 .sites { margin: 6px 0 0; padding-left: 18px; }
 .sites li { margin: 4px 0; }
 .sites .hint { font-size: 12px; margin-left: 6px; }

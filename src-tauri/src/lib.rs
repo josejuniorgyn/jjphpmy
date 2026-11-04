@@ -230,19 +230,33 @@ fn backup_info() -> BackupInfo {
     }
 }
 
-/* ---------- Importar do Laragon e restaurar (Etapa 9) ---------- */
+/* ---------- Importar do Laragon / XAMPP e restaurar (Etapa 9) ---------- */
 
-/// Lê o Laragon (pastas, MySQL, programas abertos). Só leitura.
+/// Lê os lugares padrão (C:\laragon e C:\xampp) e, se informada, a pasta
+/// escolhida pelo usuário. Só leitura.
 #[tauri::command]
-async fn laragon_detect() -> Result<laragon::Detected, String> {
-    tauri::async_runtime::spawn_blocking(|| laragon::detect(std::path::Path::new(laragon::DEFAULT_ROOT)))
-        .await
-        .map_err(|e| e.to_string())
+async fn import_detect(path: Option<String>) -> Result<Vec<laragon::Detected>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut list: Vec<laragon::Detected> = laragon::DEFAULT_ROOTS
+            .iter()
+            .map(|(kind, root)| laragon::detect(std::path::Path::new(root), Some(kind)))
+            .collect();
+        if let Some(p) = path.filter(|p| !p.trim().is_empty()) {
+            let p = std::path::PathBuf::from(p.trim());
+            if !list.iter().any(|d| std::path::Path::new(&d.root) == p) {
+                list.push(laragon::detect(&p, None));
+            }
+        }
+        list
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
-/// Copia www e/ou importa o MySQL do Laragon, enviando o andamento no evento `import-log`.
+/// Copia os sites e/ou importa os bancos da pasta `root` (Laragon ou XAMPP),
+/// enviando o andamento no evento `import-log`.
 #[tauri::command]
-async fn laragon_import(app: AppHandle, www: bool, mysql: bool, password: String) -> Result<String, String> {
+async fn import_run(app: AppHandle, root: String, www: bool, mysql: bool, password: String) -> Result<String, String> {
     static BUSY: AtomicBool = AtomicBool::new(false);
     if BUSY.swap(true, Ordering::SeqCst) {
         return Err("Já existe uma importação em andamento.".into());
@@ -251,31 +265,31 @@ async fn laragon_import(app: AppHandle, www: bool, mysql: bool, password: String
         let log = |msg: String| {
             let _ = app.emit("import-log", msg);
         };
-        let root = std::path::Path::new(laragon::DEFAULT_ROOT);
-        let found = laragon::detect(root);
+        let root = std::path::PathBuf::from(&root);
+        let found = laragon::detect(&root, None);
         if !found.found {
-            return Err(format!("Laragon não encontrado em {}.", root.display()));
+            return Err(format!("Nenhum Laragon ou XAMPP encontrado em {}.", root.display()));
         }
-        // Só o MySQL do Laragon atrapalha (os arquivos de dados ficam em uso).
+        // Só o banco da origem atrapalha (os arquivos de dados ficam em uso).
         if mysql && found.running.iter().any(|p| p.eq_ignore_ascii_case("mysqld.exe")) {
-            return Err(
-                "Pare o MySQL do Laragon antes de importar (no Laragon, \"Parar tudo\"). \
-                 Os dois não devem rodar ao mesmo tempo: usam as portas 80 e 3306."
-                    .into(),
-            );
+            return Err(format!(
+                "Pare o MySQL/MariaDB do {} antes de importar. \
+                 Os dois não devem rodar ao mesmo tempo: usam as portas 80 e 3306.",
+                found.name
+            ));
         }
         let state = app.state::<AppState>();
         let cfg = state.config.lock().unwrap().clone();
         let mut summary = Vec::new();
         if www {
             let dst = std::path::PathBuf::from(&cfg.settings.document_root);
-            log(format!("Copiando {} para {} (arquivos que já existem não são sobrescritos)...", root.join("www").display(), dst.display()));
-            let s = laragon::robocopy(&root.join("www"), &dst, true)?;
+            log(format!("Copiando {} para {} (arquivos que já existem não são sobrescritos)...", found.www, dst.display()));
+            let s = laragon::copy_www(&found, &dst)?;
             log(s);
-            summary.push(format!("www: {} itens copiados para {}.", found.www_items, dst.display()));
+            summary.push(format!("Sites: {} itens de {} copiados para {}.", found.www_items, found.www, dst.display()));
         }
         if mysql {
-            let m = found.mysql.as_ref().ok_or("O Laragon não tem MySQL com dados.")?;
+            let m = found.mysql.as_ref().ok_or_else(|| format!("O {} não tem MySQL/MariaDB com dados.", found.name))?;
             let s = laragon::import_mysql(m, &cfg, &layout(), &state.services, &password, &log)?;
             services_changed(&app);
             summary.push(s);
@@ -776,6 +790,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| tray::show_window(app, None)))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--minimized"])))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState { config: Mutex::new(config), catalog: Catalog::embedded(), services: Default::default(), watcher: Mutex::new(None) })
         .setup(move |app| {
@@ -871,8 +886,8 @@ pub fn run() {
             backup_info,
             backup_list,
             backup_restore,
-            laragon_detect,
-            laragon_import,
+            import_detect,
+            import_run,
             check_update,
             pix_qr,
         ])
