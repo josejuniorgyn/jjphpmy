@@ -809,6 +809,10 @@ function renderAbout() {
     e.preventDefault();
     window.__TAURI__.opener.openUrl("mailto:josejuniorgyn@gmail.com");
   });
+  $("#repo-link").addEventListener("click", (e) => {
+    e.preventDefault();
+    window.__TAURI__.opener.openUrl("https://github.com/josejuniorgyn/jjphpmy");
+  });
 
   const box = $("#amounts");
   for (const reais of PIX_AMOUNTS) {

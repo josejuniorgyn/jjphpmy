@@ -2,6 +2,9 @@
   "name": "jjphpmy",
   "private": true,
   "version": "0.1.0",
+  "license": "GPL-3.0-or-later",
+  "author": "Jose Antonio de Melo Junior <josejuniorgyn@gmail.com>",
+  "repository": "github:josejuniorgyn/jjphpmy",
   "scripts": {
     "tauri": "tauri",
     "dev": "tauri dev",

@@ -15,6 +15,7 @@ instalados com um clique, só o que você escolher.
 ![Windows 10/11](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4)
 ![Instalador](https://img.shields.io/badge/instalador-~2,6%20MB-success)
 ![Sem administrador](https://img.shields.io/badge/n%C3%A3o%20pede-administrador-success)
+[![Licença GPL-3.0](https://img.shields.io/badge/licen%C3%A7a-GPL--3.0-blue)](LICENSE)
 
 </div>
 
@@ -133,6 +134,16 @@ Também é muito bem-vindo: ⭐ uma estrela no repositório, [sugestões e relat
 ## Para desenvolvedores
 
 Feito com **[Tauri 2](https://tauri.app)** (Rust + HTML/JS), por isso é tão leve.
+
+## Licença
+
+O JJPHPMY é **software livre**, distribuído sob a **[GNU GPL v3.0](LICENSE)** (ou posterior).
+
+- ✅ Você pode usar, copiar, estudar, modificar e distribuir, inclusive para fins comerciais.
+- 📝 Os créditos ao autor e o aviso de licença devem ser mantidos.
+- 🔓 Quem distribuir uma versão modificada precisa disponibilizar o código-fonte sob a mesma licença GPL-3.0: derivados do JJPHPMY continuam sempre abertos.
+
+Os programas que o JJPHPMY baixa (Apache, PHP, MySQL etc.) têm as licenças dos seus próprios projetos.
 
 <div align="center">
 

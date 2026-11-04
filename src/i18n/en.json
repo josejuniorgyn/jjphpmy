@@ -121,5 +121,7 @@
   "Nome da pasta": "Folder name",
   "Criar projeto": "Create project",
   "O projeto é criado dentro do Document Root e já ganha o site {nome}.test. Os modelos usam o PHP, o Composer e o Node.js instalados na aba Pacotes.": "The project is created inside the Document Root and gets its {name}.test site. Templates use the PHP, Composer and Node.js installed in the Packages tab.",
-  "Informe o nome da pasta do projeto.": "Enter the project folder name."
+  "Informe o nome da pasta do projeto.": "Enter the project folder name.",
+  "Licença:": "License:",
+  "GPL-3.0 (software livre e de código aberto) ·": "GPL-3.0 (free and open-source software) ·"
 }

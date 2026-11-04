@@ -44,7 +44,9 @@
         ]
       }
     },
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "licenseFile": "../LICENSE",
+    "copyright": "© 2026 Jose Antonio de Melo Junior. Licença GPL-3.0."
   },
   "plugins": {
     "updater": {
