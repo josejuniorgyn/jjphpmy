@@ -1,4 +1,4 @@
-# jjphpmy
+# JJPHPMY
 
 Ambiente de desenvolvimento local para Windows: Apache, Nginx, PHP, MySQL, PostgreSQL, MongoDB, phpMyAdmin, Node.js, Python, Memcached, Redis e Mailpit. Só instala o que você selecionar.
 
@@ -54,4 +54,4 @@ npm run build
 
 Se preferir clique em Releases e baixe o instalador, ou clique no link abaixo:
 
-[jjphpmy_0.2.0_x64-setup.exe](https://github.com/josejuniorgyn/jjphpmy/releases/download/v0.2.0/jjphpmy_0.2.0_x64-setup.exe)
+[jjphpmy_0.2.1_x64-setup.exe](https://github.com/josejuniorgyn/jjphpmy/releases/download/v0.2.1/jjphpmy_0.2.1_x64-setup.exe)
