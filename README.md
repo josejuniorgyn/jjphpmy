@@ -30,7 +30,7 @@ instalados com um clique, só o que você escolher.
 - 🌐 **Sites `.test` automáticos:** crie uma pasta em `www` e ela vira `http://nome-da-pasta.test`, inclusive com HTTPS.
 - 🛡️ **Não pede administrador** para instalar nem para usar (só o Windows pede permissão uma vez para atualizar o arquivo `hosts`).
 - 🔄 **Atualiza sozinho** pelo GitHub, com assinatura digital.
-- 🇧🇷 **Em português do Brasil**, com opção de inglês.
+- 🌍 **Em português do Brasil** e mais 8 idiomas: English, Español, Français, Deutsch, Italiano, 简体中文, 日本語 e Русский.
 
 ## O que você pode instalar
 
@@ -81,6 +81,43 @@ Escolha um modelo, digite o nome e pronto: o projeto é criado em `www` e já ab
 - Backup do MySQL, do PostgreSQL e do MongoDB em `.zip`, no intervalo que você escolher (de hora em hora até semanal).
 - Mantém os últimos N backups e apaga os mais antigos.
 - Botões **Fazer backup agora** e **Restaurar**.
+
+## Telas
+
+### Pacotes
+Escolha o que instalar: servidores web, linguagens, bancos de dados, cache e ferramentas. Cada pacote mostra a versão instalada e permite escolher a versão a baixar (ou deixar em **Mais recente**). As dependências são marcadas sozinhas, e a barra de progresso mostra o download, a verificação e a extração.
+
+![Aba Pacotes](assets/screenshots/pacotes.png)
+
+### Instalados
+Todas as versões instaladas em `C:\jjphpmy\bin`, lado a lado. Marque qual versão fica **ativa** (a usada pelos serviços e pelo terminal), abra a pasta de cada uma ou remova as que não usa mais.
+
+![Aba Instalados](assets/screenshots/instalados.png)
+
+### Configurações
+Iniciar com o Windows, idioma da interface (português, inglês, espanhol, francês, alemão, italiano, chinês, japonês e russo), pastas de sites e de dados, editor de configuração, PATH do Windows, hosts virtuais `{nome}.test`, backup automático e atualização automática.
+
+![Aba Configurações](assets/screenshots/configuracoes.png)
+
+### Serviços e Portas
+Inicie, pare e reinicie cada serviço, ou todos de uma vez. Veja o status (rodando em verde, parado em vermelho), mude as portas, ligue o HTTPS e abra um **Terminal** já com PHP, Composer, Node.js e Git no PATH.
+
+![Aba Serviços e Portas](assets/screenshots/servicos.png)
+
+### Projetos
+Crie um projeto novo com um clique: Laravel + Vue, React ou Livewire, Laravel, Symfony, Vite + Vue, React ou Svelte, ou PHP puro. A saída do Composer e do npm aparece na tela, e o site `{nome}.test` fica pronto no final.
+
+![Aba Projetos](assets/screenshots/projetos.png)
+
+### Importar
+Traga os sites e os bancos de dados do **Laragon** ou do **XAMPP**. O JJPHPMY procura nos lugares padrão (`C:\laragon` e `C:\xampp`) ou na pasta que você escolher, sem alterar nada na instalação antiga. Também restaura backups do próprio JJPHPMY.
+
+![Aba Importar](assets/screenshots/importar.png)
+
+### Sobre
+Versão, autor, licença e link do repositório. Em **Contribua com o projeto**, escolha um valor de R$ 20 a R$ 100 para gerar o QR Code PIX ou o código "copia e cola".
+
+![Aba Sobre](assets/screenshots/sobre.png)
 
 ## Instalação
 

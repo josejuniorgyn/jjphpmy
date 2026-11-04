@@ -165,7 +165,8 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .status { font-size: 12px; white-space: nowrap; }
 .status.running { color: var(--ok); font-weight: 600; }
 .status.error { color: var(--error); font-weight: 600; cursor: help; }
-.status.stopped, .status.missing { color: var(--muted); }
+.status.stopped { color: var(--error); }
+.status.missing { color: var(--muted); }
 .service-actions { white-space: nowrap; }
 
 .inline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
@@ -206,6 +207,7 @@ a { color: var(--accent); }
 .amount.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 
 .pix { display: flex; flex-wrap: wrap; gap: 20px; margin-top: 16px; align-items: flex-start; }
+.pix[hidden] { display: none; }
 .pix-qr { background: #fff; padding: 8px; border-radius: 8px; line-height: 0; }
 .pix-qr svg { width: 240px; height: 240px; }
 .pix-info { flex: 1; min-width: 260px; }

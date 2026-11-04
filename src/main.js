@@ -51,8 +51,9 @@ function nameOf(id) {
 let dict = {};
 
 function translateText(node) {
-  const s = node.nodeValue.trim();
-  if (s && dict[s]) node.nodeValue = node.nodeValue.replace(s, dict[s]);
+  // Frases longas do HTML ocupam várias linhas: compara com os espaços normalizados.
+  const s = node.nodeValue.replace(/\s+/g, " ").trim();
+  if (s && dict[s]) node.nodeValue = node.nodeValue.match(/^\s*/)[0] + dict[s] + node.nodeValue.match(/\s*$/)[0];
 }
 
 function translateTree(root) {
@@ -262,11 +263,20 @@ async function installSelected() {
   button.disabled = true;
   button.textContent = "Instalando...";
   for (const box of document.querySelectorAll(".pkg .progress")) box.hidden = true;
+  let ok = false;
   try {
     config = await invoke("install_packages", { packages });
     toast("Instalação concluída.");
+    ok = true;
   } catch (err) {
     toast(err, true);
+  }
+  // Instalou tudo: desmarca os pacotes (inclusive os automáticos) e volta as
+  // versões para "Mais recente". Com erro, mantém a seleção para tentar de novo.
+  if (ok) {
+    userSelected.clear();
+    for (const select of document.querySelectorAll(".pkg select")) select.value = "";
+    await updateResolution();
   }
   button.textContent = "Instalar selecionados";
   button.disabled = false;
@@ -821,9 +831,14 @@ function renderAbout() {
     btn.addEventListener("click", () => showPix(reais, btn));
     box.append(btn);
   }
+  // Já abre com o primeiro valor (R$ 20,00) escolhido e o QR Code gerado;
+  // o valor clicado fica marcado até escolher outro.
+  showPix(PIX_AMOUNTS[0], box.firstElementChild);
 
   $("#btn-copy-pix").addEventListener("click", async () => {
-    await navigator.clipboard.writeText($("#pix-payload").value);
+    const code = $("#pix-payload").value;
+    if (!code) return toast("Selecione um valor primeiro.", true);
+    await navigator.clipboard.writeText(code);
     toast("Código PIX copiado.");
   });
 }
