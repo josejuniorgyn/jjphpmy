@@ -19,7 +19,7 @@ use std::time::{Duration, Instant};
 
 /// Ordem de início (bancos antes dos servidores web); a parada é na ordem inversa.
 pub const ORDER: &[&str] =
-    &["mysql", "postgresql", "mongodb", "redis", "memcached", "mailpit", "php-cgi", "apache", "nginx"];
+    &["mysql", "mariadb", "postgresql", "mongodb", "opensearch", "elasticsearch", "redis", "memcached", "mailpit", "php-cgi", "apache", "nginx"];
 
 /// Porta da interface web do Mailpit (a SMTP é a configurada na tela).
 pub const MAILPIT_WEB_PORT: u16 = 8025;
@@ -30,11 +30,15 @@ pub fn display_name(id: &str) -> &str {
         "nginx" => "Nginx",
         "php-cgi" => "PHP (php-cgi)",
         "mysql" => "MySQL",
+        "mariadb" => "MariaDB",
+        "opensearch" => "OpenSearch",
+        "elasticsearch" => "Elasticsearch",
         "postgresql" => "PostgreSQL",
         "mongodb" => "MongoDB",
         "redis" => "Redis",
         "memcached" => "Memcached",
         "mailpit" => "Mailpit",
+        other if other.starts_with("php@") => "PHP do site (php-cgi)",
         other => other,
     }
 }
@@ -156,7 +160,35 @@ fn need(file: PathBuf) -> Result<PathBuf, String> {
     }
 }
 
+/// php-cgi de uma versão escolhida para sites ("PHP por site"): id `php@{chave}`.
+fn site_php_spec(cfg: &Config, layout: &Layout, key: &str) -> Result<Spec, String> {
+    let (_, port, p) = confgen::site_php_ports(cfg)
+        .into_iter()
+        .find(|(k, _, _)| k == key)
+        .ok_or_else(|| format!("O PHP {key} escolhido para um site não está instalado."))?;
+    let dir = PathBuf::from(&p.path);
+    let ini = need(layout.dir(&["etc", "php", &format!("php-{key}.ini")]))?;
+    let log = layout.dir(&["logs", "php", &format!("php-cgi-{key}-console.log")]);
+    let program = dir.join("php-cgi.exe");
+    if !program.exists() {
+        return Err(format!("{} não encontrado. Reinstale o PHP {key}.", program.display()));
+    }
+    Ok(Spec {
+        program,
+        args: vec!["-b".into(), format!("127.0.0.1:{port}"), "-c".into(), s(ini)],
+        cwd: dir,
+        env: vec![("PHP_FCGI_MAX_REQUESTS".into(), "0".into())],
+        ports: vec![port],
+        log,
+        stop: None,
+        ready_secs: 15,
+    })
+}
+
 pub fn spec(cfg: &Config, layout: &Layout, id: &str) -> Result<Spec, String> {
+    if let Some(key) = id.strip_prefix("php@") {
+        return site_php_spec(cfg, layout, key);
+    }
     let not_installed = || format!("{} não está instalado. Instale na aba Pacotes.", display_name(id));
     let etc = |parts: &[&str]| layout.dir(&[&["etc"], parts].concat());
     let logs = |file: &str| layout.dir(&["logs", if id == "php-cgi" { "php" } else { id }, file]);
@@ -220,6 +252,19 @@ pub fn spec(cfg: &Config, layout: &Layout, id: &str) -> Result<Spec, String> {
             spec.log = logs("mysql.err");
             spec.ready_secs = 60;
         }
+        "mariadb" => {
+            let ini = need(etc(&["mariadb", "my.ini"]))?;
+            let bin = dir.join("bin");
+            let pick = |names: [&str; 2]| names.iter().map(|n| bin.join(n)).find(|p| p.exists()).unwrap_or_else(|| bin.join(names[1]));
+            spec.program = pick(["mariadbd.exe", "mysqld.exe"]);
+            spec.args = vec![format!("--defaults-file={}", s(&ini))];
+            spec.stop = Some((
+                pick(["mariadb-admin.exe", "mysqladmin.exe"]),
+                vec!["-u".into(), "root".into(), "-h".into(), "127.0.0.1".into(), "-P".into(), port_of(cfg, "mariadb").to_string(), "shutdown".into()],
+            ));
+            spec.log = logs("mariadb.err");
+            spec.ready_secs = 60;
+        }
         "postgresql" => {
             let data = confgen::data_dir(cfg, p).unwrap_or_default();
             need(etc(&["postgresql", "postgresql.conf"]))?;
@@ -230,6 +275,22 @@ pub fn spec(cfg: &Config, layout: &Layout, id: &str) -> Result<Spec, String> {
                 vec!["stop".into(), "-D".into(), s(&data), "-m".into(), "fast".into(), "-w".into()],
             ));
             spec.ready_secs = 30;
+        }
+        "opensearch" | "elasticsearch" => {
+            // O .bat chama o Java embutido; a pasta de configuração vem do etc\.
+            let conf = etc(&[id]);
+            need(conf.join(format!("{id}.yml")))?;
+            let bat = dir.join("bin").join(format!("{id}.bat"));
+            spec.program = PathBuf::from("cmd.exe");
+            spec.args = vec!["/D".into(), "/C".into(), s(&bat)];
+            let var = if id == "opensearch" { "OPENSEARCH_PATH_CONF" } else { "ES_PATH_CONF" };
+            spec.env.push((var.into(), s(&conf)));
+            spec.log = logs("jjphpmy.log");
+            spec.ready_secs = 180;
+            if !bat.exists() {
+                return Err(format!("{} não encontrado. Reinstale o pacote.", bat.display()));
+            }
+            return Ok(spec);
         }
         "mongodb" => {
             spec.program = dir.join("bin").join("mongod.exe");
@@ -401,6 +462,12 @@ impl Manager {
         if id == "nginx" && active(cfg, "php", Some("nts")).is_some() {
             self.start(cfg, layout, "php-cgi")?;
         }
+        // Sites com outra versão do PHP: um php-cgi por versão, antes do servidor web.
+        if id == "apache" || id == "nginx" {
+            for (key, _, _) in confgen::site_php_ports(cfg) {
+                self.start(cfg, layout, &format!("php@{key}"))?;
+            }
+        }
         let result = self.spawn_and_wait(cfg, layout, id);
         let mut errors = self.errors.lock().unwrap();
         match &result {
@@ -422,7 +489,8 @@ impl Manager {
             }
         }
 
-        let console = layout.dir(&["logs", if id == "php-cgi" { "php" } else { id }, &format!("{id}-console.log")]);
+        let log_dir = if id == "php-cgi" || id.starts_with("php@") { "php" } else { id };
+        let console = layout.dir(&["logs", log_dir, &format!("{}-console.log", id.replace('@', "-"))]);
         let out = open_console_log(&console, &spec)?;
         let err = out.try_clone().map_err(|e| e.to_string())?;
         let mut cmd = Command::new(&spec.program);
@@ -491,6 +559,13 @@ impl Manager {
         self.errors.lock().unwrap().remove(id);
         if id == "nginx" {
             self.stop("php-cgi");
+        }
+        // Os php-cgi dos sites param quando nenhum servidor web estiver rodando.
+        if (id == "apache" || id == "nginx") && !self.is_running("apache") && !self.is_running("nginx") {
+            let extra: Vec<String> = self.running.lock().unwrap().keys().filter(|k| k.starts_with("php@")).cloned().collect();
+            for k in extra {
+                self.stop(&k);
+            }
         }
     }
 
@@ -628,6 +703,53 @@ mod tests {
         let mut out = String::new();
         let _ = s.read_to_string(&mut out);
         out
+    }
+
+    /// OpenSearch e Elasticsearch de verdade (baixa ~1 GB na primeira vez, em
+    /// %TEMP%\jjphpmy-live-search). `cargo test live_search -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn live_search() {
+        use std::sync::Arc;
+        let layout = Layout { base: std::env::temp_dir().join("jjphpmy-live-search") };
+        for d in ["etc", "data", "logs"] {
+            let _ = fs::remove_dir_all(layout.dir(&[d]));
+        }
+        let catalog = crate::catalog::Catalog::embedded();
+        let emit: crate::installer::Emit = Arc::new(|_| {});
+        let mut cfg = Config::default();
+        cfg.settings.data_dir = layout.dir(&["data"]).display().to_string();
+        let ids = ["opensearch", "elasticsearch"];
+        for (id, port) in [("opensearch", 19200), ("elasticsearch", 19201)] {
+            let svc = cfg.services.iter_mut().find(|s| s.id == id).unwrap();
+            svc.port = port;
+            svc.enabled = true;
+            let (bin, tmp) = (layout.dir(&["bin"]), layout.dir(&["tmp"]));
+            let fut = crate::installer::install_in(emit.clone(), catalog.get(id).unwrap(), None, None, &bin, &tmp);
+            let p = tauri::async_runtime::block_on(fut).unwrap_or_else(|e| panic!("{id}: {e}")).unwrap();
+            println!("pacote: {id} {}", p.version);
+            cfg.installed.push(InstalledPackage { active: true, ..p });
+        }
+        confgen::generate(&cfg, &layout, true).unwrap();
+        let m = Manager::default();
+        let mut ok = true;
+        for (id, port) in ids.into_iter().zip([19200u16, 19201]) {
+            let t = Instant::now();
+            match m.start(&cfg, &layout, id) {
+                Ok(_) => {
+                    let body = http_get(port, "/");
+                    let good = body.contains("\"cluster_name\" : \"jjphpmy\"");
+                    println!("{} {id} em {:.0} s: {}", if good { "OK" } else { "FALHOU" }, t.elapsed().as_secs_f32(), body.lines().filter(|l| l.contains("number")).next().unwrap_or("").trim());
+                    ok &= good;
+                    m.stop(id);
+                }
+                Err(e) => {
+                    println!("FALHOU {id}: {e}");
+                    ok = false;
+                }
+            }
+        }
+        assert!(ok);
     }
 
     /// Inicia e para serviços reais numa pasta temporária, em portas

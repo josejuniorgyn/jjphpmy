@@ -206,7 +206,7 @@ async fn expected_sha256(rep: &Reporter, d: &Download) -> Option<String> {
 
 /// Extrai o zip para `dest`, removendo a pasta raiz única, se houver.
 /// Grava em `{dest}.partial` e só renomeia no fim, para não deixar meia instalação.
-fn extract(zip_path: &Path, dest: &Path, on_progress: impl Fn(u64, u64)) -> Result<(), String> {
+pub(crate) fn extract(zip_path: &Path, dest: &Path, on_progress: impl Fn(u64, u64)) -> Result<(), String> {
     let file = File::open(zip_path).map_err(|e| format!("Não foi possível abrir {}: {e}", zip_path.display()))?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Arquivo zip inválido ({}): {e}", zip_path.display()))?;
 
@@ -256,7 +256,8 @@ fn extract(zip_path: &Path, dest: &Path, on_progress: impl Fn(u64, u64)) -> Resu
     fs::rename(&partial, dest).map_err(|e| format!("Não foi possível mover para {}: {e}", dest.display()))
 }
 
-/// Pacote que é um arquivo só (composer.phar): copia para a pasta da versão.
+/// Pacote que é um arquivo só (composer.phar, wp-cli.phar, adminer.php,
+/// cloudflared.exe): copia para a pasta da versão.
 fn install_single_file(file: &Path, dest: &Path) -> Result<(), String> {
     let partial = dest.with_extension("partial");
     let _ = fs::remove_dir_all(&partial);
@@ -293,6 +294,25 @@ fn post_install(id: &str, dir: &Path) -> Result<(), String> {
     if id == "composer" {
         // `composer` no Terminal e no PATH: chama o PHP ativo (do PATH) com o .phar.
         fs::write(dir.join("composer.bat"), "@php \"%~dp0composer.phar\" %*\r\n").map_err(|e| e.to_string())?;
+    }
+    // O nome do arquivo baixado tem a versão; deixa um nome fixo.
+    let renamed = match id {
+        "adminer" => Some("index.php"),
+        "cloudflared" => Some("cloudflared.exe"),
+        "wpcli" => Some("wp-cli.phar"),
+        _ => None,
+    };
+    if let Some(target) = renamed {
+        let from = fs::read_dir(dir)
+            .map_err(|e| e.to_string())?
+            .flatten()
+            .map(|e| e.path())
+            .find(|p| p.is_file())
+            .ok_or("Pasta do pacote vazia.")?;
+        fs::rename(&from, dir.join(target)).map_err(|e| e.to_string())?;
+    }
+    if id == "wpcli" {
+        fs::write(dir.join("wp.bat"), "@php -d error_reporting=24575 \"%~dp0wp-cli.phar\" %*\r\n").map_err(|e| e.to_string())?;
     }
     if id == "python" {
         // O Python "embeddable" vem com `#import site` comentado; sem isso o pip não funciona.
@@ -425,10 +445,11 @@ pub(crate) async fn install_in(
     rep.stage("extract", "Extraindo...");
     let (zp, dp, r) = (zip_path.clone(), dest.clone(), rep.clone());
     tauri::async_runtime::spawn_blocking(move || {
-        if zp.extension().is_some_and(|e| e == "phar") {
-            install_single_file(&zp, &dp)?;
-        } else if zp.to_string_lossy().to_lowercase().ends_with(".7z.exe") {
+        let lower = zp.to_string_lossy().to_lowercase();
+        if lower.ends_with(".7z.exe") {
             extract_self(&zp, &dp)?;
+        } else if [".phar", ".php", ".exe"].iter().any(|e| lower.ends_with(e)) {
+            install_single_file(&zp, &dp)?;
         } else {
             extract(&zp, &dp, |done, total| r.send("extract", done, Some(total), None))?;
         }
@@ -550,6 +571,9 @@ mod tests {
             ("notepadpp", None, "notepad++.exe"),
             ("winscp", None, "WinSCP.exe"),
             ("composer", None, "composer.bat"),
+            ("wpcli", None, "wp.bat"),
+            ("adminer", None, "index.php"),
+            ("cloudflared", None, "cloudflared.exe"),
             ("git", None, r"cmd\git.exe"),
             ("apache", None, r"bin\httpd.exe"),
             ("phpmyadmin", None, "index.php"),

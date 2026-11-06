@@ -10,6 +10,9 @@ const SERVICE_NAMES = {
   memcached: "Memcached",
   redis: "Redis",
   mongodb: "MongoDB",
+  mariadb: "MariaDB",
+  opensearch: "OpenSearch",
+  elasticsearch: "Elasticsearch",
   mailpit: "Mailpit",
 };
 
@@ -400,6 +403,7 @@ function fillSettings() {
     if (input.type === "checkbox") input.checked = Boolean(value);
     else input.value = String(value ?? "");
   }
+  $("#xdebug").checked = Boolean(config.settings.xdebug);
 }
 
 async function saveSettings(event) {
@@ -778,6 +782,12 @@ async function renderSites() {
     list.append(el("li", "hint", "Nenhum site ainda. Crie uma pasta dentro do Document Root."));
     return;
   }
+  let shared = {};
+  try {
+    shared = await invoke("shared_sites");
+  } catch {}
+  // Versões de PHP instaladas para o "PHP por site" (chave = "versão-variante").
+  const phps = config.installed.filter((p) => p.id === "php");
   for (const s of sites) {
     const li = el("li");
     const link = (url) => {
@@ -793,7 +803,135 @@ async function renderSites() {
     li.append(link(s.url));
     if (s.httpsUrl) li.append(" ", link(s.httpsUrl));
     li.append(el("span", "hint", ` www\\${s.folder}${s.root.endsWith("/public") ? "\\public" : ""}`));
+    li.append(siteTools(s, phps, shared[s.host]));
     list.append(li);
+  }
+}
+
+/** PHP do site e "Compartilhar" (Cloudflare Tunnel). */
+function siteTools(site, phps, sharedUrl) {
+  const box = el("span", "site-tools");
+  if (phps.length > 1) {
+    const select = el("select");
+    select.title = "Versão do PHP deste site";
+    select.append(new Option("PHP padrão", ""));
+    for (const p of phps) {
+      const key = `${p.version}-${p.variant ?? "ts"}`;
+      select.append(new Option(`PHP ${p.version}`, key));
+    }
+    // TS e NTS da mesma versão dão no mesmo: mostra só uma opção por versão.
+    const seen = new Set();
+    for (const opt of [...select.options]) {
+      const v = opt.textContent;
+      if (seen.has(v)) opt.remove();
+      else seen.add(v);
+    }
+    select.value = config.sitePhp?.[site.host] ?? "";
+    if (select.value === "" && config.sitePhp?.[site.host]) {
+      // A chave salva é da outra variante: mostra pela versão.
+      const ver = config.sitePhp[site.host].split("-").slice(0, -1).join("-");
+      for (const opt of select.options) if (opt.value.startsWith(`${ver}-`)) select.value = opt.value;
+    }
+    select.addEventListener("change", async () => {
+      try {
+        await invoke("set_site_php", { host: site.host, key: select.value || null });
+        config.sitePhp = { ...(config.sitePhp ?? {}) };
+        if (select.value) config.sitePhp[site.host] = select.value;
+        else delete config.sitePhp[site.host];
+        toast(`PHP de ${site.host}: ${select.selectedOptions[0].textContent}.`);
+      } catch (err) {
+        toast(err, true);
+        renderSites();
+      }
+    });
+    box.append(select);
+  }
+  if (sharedUrl) {
+    const a = el("a", "share-url", sharedUrl);
+    a.href = "#";
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      window.__TAURI__.opener.openUrl(sharedUrl).catch((err) => toast(err, true));
+    });
+    const copy = el("button", "link", "Copiar link");
+    copy.type = "button";
+    copy.addEventListener("click", () => navigator.clipboard.writeText(sharedUrl).then(() => toast("Link copiado.")));
+    const stop = el("button", "secondary", "Parar");
+    stop.type = "button";
+    stop.addEventListener("click", () => invoke("stop_share", { host: site.host }).catch((err) => toast(err, true)));
+    box.append(a, copy, stop);
+  } else {
+    const share = el("button", "secondary", "Compartilhar");
+    share.type = "button";
+    share.title = "Cria um link público temporário (https://...trycloudflare.com) para este site";
+    share.addEventListener("click", async () => {
+      share.disabled = true;
+      share.textContent = "Abrindo link...";
+      try {
+        const url = await invoke("share_site", { host: site.host });
+        await navigator.clipboard.writeText(url).catch(() => {});
+        toast(`Link público (copiado): ${url}\nQualquer pessoa com o link vê o site enquanto estiver compartilhado.`);
+      } catch (err) {
+        toast(err, true);
+        share.disabled = false;
+        share.textContent = "Compartilhar";
+      }
+    });
+    box.append(share);
+  }
+  return box;
+}
+
+/* ---------- PHP: Xdebug e extensões ---------- */
+
+async function toggleXdebug(event) {
+  const box = event.currentTarget;
+  const enabled = box.checked;
+  box.disabled = true;
+  if (enabled) toast("Baixando o Xdebug...");
+  try {
+    const msg = await invoke("set_xdebug", { enabled });
+    config.settings.xdebug = enabled;
+    toast(msg || (enabled ? "Xdebug ligado." : "Xdebug desligado."));
+  } catch (err) {
+    box.checked = !enabled;
+    toast(err, true);
+  }
+  box.disabled = false;
+}
+
+async function renderPhpExtensions() {
+  const grid = $("#php-ext");
+  grid.replaceChildren();
+  let info;
+  try {
+    info = await invoke("php_extensions");
+  } catch (err) {
+    $("#php-ext-info").textContent = String(err);
+    $("#btn-ext-save").disabled = $("#btn-ext-default").disabled = true;
+    return;
+  }
+  $("#btn-ext-save").disabled = $("#btn-ext-default").disabled = false;
+  $("#php-ext-info").textContent = `PHP ${info.php}: ${info.enabled.length} de ${info.available.length} ligadas${info.default ? " (lista padrão do JJPHPMY)" : ""}. Reinicie o Apache/Nginx depois de salvar.`;
+  for (const name of info.available) {
+    const label = el("label", "check");
+    const box = el("input");
+    box.type = "checkbox";
+    box.value = name;
+    box.checked = info.enabled.includes(name);
+    label.append(box, ` ${name}`);
+    grid.append(label);
+  }
+}
+
+async function savePhpExtensions(list) {
+  try {
+    await invoke("save_php_extensions", { list });
+    config.settings.phpExtensions = list;
+    toast(list ? "Extensões salvas." : "Extensões de volta ao padrão.");
+    renderPhpExtensions();
+  } catch (err) {
+    toast(err, true);
   }
 }
 
@@ -864,6 +1002,12 @@ async function init() {
     tab.addEventListener("click", () => showTab(tab.dataset.tab));
   }
   $("#settings-form").addEventListener("submit", saveSettings);
+  $("#xdebug").addEventListener("change", toggleXdebug);
+  $("#php-ext-box").addEventListener("toggle", (e) => e.currentTarget.open && renderPhpExtensions());
+  $("#btn-ext-save").addEventListener("click", () =>
+    savePhpExtensions([...document.querySelectorAll("#php-ext input:checked")].map((b) => b.value)),
+  );
+  $("#btn-ext-default").addEventListener("click", () => savePhpExtensions(null));
   $("#services-form").addEventListener("submit", saveServices);
   $("#btn-regenerate").addEventListener("click", regenerateConfigs);
   $("#btn-start-all").addEventListener("click", (e) => runAll("start_all_services", e.currentTarget));

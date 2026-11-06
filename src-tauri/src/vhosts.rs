@@ -109,6 +109,17 @@ pub fn plan(cfg: &Config, layout: &Layout, sites: &[Site]) -> Vec<(PathBuf, Stri
         out.push((dir.join("auto.00-default.conf"), render(APACHE_DEFAULT, &[("port", port("apache")), ("www", www)])));
         let ssl = crate::ssl::port(cfg, "apache");
         for s in sites {
+            // PHP por site: manda o .php para o php-cgi da versão escolhida.
+            // No Windows a barra final evita que o Apache cole "C:" na porta, e o
+            // O SCRIPT_FILENAME chega como "proxy:fcgi://127.0.0.1:9100/C:/..." e o
+            // php-cgi não acha o arquivo: tira o prefixo e deixa só o caminho.
+            let php_handler = match confgen::site_php_port(cfg, &s.host) {
+                Some(p) => format!(
+                    "        <FilesMatch \"\\.php$\">\n            SetHandler \"proxy:fcgi://127.0.0.1:{p}/\"\n        </FilesMatch>\n        \
+                     ProxyFCGISetEnvIf \"reqenv('SCRIPT_FILENAME') =~ m#^proxy:fcgi://[^/]+/(.*)$#\" SCRIPT_FILENAME \"$1\"\n"
+                ),
+                None => String::new(),
+            };
             let ssl_vhost = match ssl {
                 Some(p) => render(
                     APACHE_SSL,
@@ -118,6 +129,7 @@ pub fn plan(cfg: &Config, layout: &Layout, sites: &[Site]) -> Vec<(PathBuf, Stri
                         ("ssl_port", p.to_string()),
                         ("cert", fwd(crate::ssl::server_cert(layout))),
                         ("key", fwd(crate::ssl::server_key(layout))),
+                        ("php_handler", php_handler.clone()),
                     ],
                 ),
                 None => String::new(),
@@ -128,6 +140,7 @@ pub fn plan(cfg: &Config, layout: &Layout, sites: &[Site]) -> Vec<(PathBuf, Stri
                 ("root", s.root.clone()),
                 ("port", port("apache")),
                 ("ssl_vhost", ssl_vhost),
+                ("php_handler", php_handler),
             ];
             out.push((dir.join(format!("auto.{}.conf", s.host)), render(APACHE, &vars)));
         }
@@ -136,6 +149,10 @@ pub fn plan(cfg: &Config, layout: &Layout, sites: &[Site]) -> Vec<(PathBuf, Stri
         let dir = layout.dir(&["etc", "nginx", "sites-enabled"]);
         let php = confgen::nginx_php_block(cfg);
         for s in sites {
+            let php = match confgen::site_php_port(cfg, &s.host) {
+                Some(p) => confgen::nginx_php_block_port(cfg, p),
+                None => php.clone(),
+            };
             let vars = [
                 ("folder", s.folder.clone()),
                 ("host", s.host.clone()),
@@ -317,6 +334,163 @@ mod tests {
             m.stop(id);
         }
         let _ = fs::remove_dir_all(&layout.base);
+    }
+
+    fn get_path(port: u16, host: &str, path: &str) -> String {
+        use std::io::{Read, Write};
+        let mut s = std::net::TcpStream::connect(("127.0.0.1", port)).unwrap();
+        s.set_read_timeout(Some(std::time::Duration::from_secs(20))).unwrap();
+        write!(s, "GET {path} HTTP/1.0\r\nHost: {host}\r\n\r\n").unwrap();
+        let mut out = String::new();
+        let _ = s.read_to_string(&mut out);
+        out
+    }
+
+    /// Novidades da 0.4.0 de verdade: MariaDB, PHP por site (php-cgi + proxy_fcgi
+    /// no Apache e fastcgi_pass no Nginx), Adminer, WP-CLI, Xdebug e o túnel.
+    /// Reaproveita os downloads em %TEMP%\jjphpmy-live-v040.
+    /// `cargo test live_v040 -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn live_v040() {
+        use std::path::Path;
+        use std::process::Command;
+        use std::sync::Arc;
+        let layout = Layout { base: std::env::temp_dir().join("jjphpmy-live-v040") };
+        for d in ["www", "etc", "data", "logs"] {
+            let _ = fs::remove_dir_all(layout.dir(&[d]));
+        }
+        let catalog = crate::catalog::Catalog::embedded();
+        let emit: crate::installer::Emit = Arc::new(|_| {});
+        let mut cfg = Config::default();
+        cfg.settings.document_root = layout.dir(&["www"]).display().to_string();
+        cfg.settings.data_dir = layout.dir(&["data"]).display().to_string();
+        for (id, port) in [("apache", 18095), ("nginx", 18096), ("mariadb", 13307)] {
+            let s = cfg.services.iter_mut().find(|s| s.id == id).unwrap();
+            s.port = port;
+            s.enabled = true;
+        }
+        let (bin, tmp) = (layout.dir(&["bin"]), layout.dir(&["tmp"]));
+        let install = |id: &str, version: Option<String>, variant: Option<&str>| {
+            let fut = crate::installer::install_in(emit.clone(), catalog.get(id).unwrap(), version, variant, &bin, &tmp);
+            let p = tauri::async_runtime::block_on(fut).unwrap_or_else(|e| panic!("{id}: {e}")).unwrap();
+            println!("pacote: {id} {} {:?}", p.version, p.variant);
+            p
+        };
+        for (id, variant) in [
+            ("apache", None),
+            ("nginx", None),
+            ("php", Some("ts")),
+            ("php", Some("nts")),
+            ("mariadb", None),
+            ("adminer", None),
+            ("wpcli", None),
+            ("cloudflared", None),
+        ] {
+            cfg.installed.push(InstalledPackage { active: true, ..install(id, None, variant) });
+        }
+        // Um PHP mais antigo (outra linha) só para um site.
+        let php_pkg = catalog.get("php").unwrap();
+        let list = tauri::async_runtime::block_on(crate::versions::versions_for(php_pkg, false)).versions;
+        let newest = crate::confgen::major_minor(&list[0].version);
+        let old = list.iter().find(|v| crate::confgen::major_minor(&v.version) != newest).unwrap().version.clone();
+        let old_php = install("php", Some(old.clone()), Some("nts"));
+        cfg.installed.push(InstalledPackage { active: false, ..old_php.clone() });
+        cfg.site_php.insert("velho.test".into(), crate::confgen::php_key(&old_php));
+
+        // Xdebug no PHP principal (TS) e no PHP do site.
+        let phps: Vec<InstalledPackage> = cfg.installed.iter().filter(|p| p.id == "php").cloned().collect();
+        let msgs = tauri::async_runtime::block_on(crate::xdebug::ensure(&phps)).unwrap_or_else(|e| panic!("{e}"));
+        println!("xdebug: {msgs:?}");
+        cfg.settings.xdebug = true;
+
+        let www = layout.dir(&["www"]);
+        for site in ["novo", "velho"] {
+            fs::create_dir_all(www.join(site)).unwrap();
+            fs::write(www.join(site).join("index.php"), "<?php echo PHP_VERSION . '|' . PHP_SAPI . '|' . (extension_loaded('xdebug') ? 'xdebug' : 'sem');").unwrap();
+        }
+        confgen::generate(&cfg, &layout, true).unwrap();
+        println!("init: {:?}", confgen::init_data(&cfg, &layout).unwrap());
+        let list = sites(&cfg);
+        write_configs(&cfg, &layout, &list).unwrap();
+
+        let m = crate::services::Manager::default();
+        for id in ["mariadb", "apache", "nginx"] {
+            m.start(&cfg, &layout, id).unwrap_or_else(|e| panic!("{id}: {e}"));
+        }
+        println!("rodando: {:?}", m.running_ids());
+
+        let mut ok = true;
+        let mut check = |name: &str, cond: bool, detail: String| {
+            println!("{} {name}: {detail}", if cond { "OK  " } else { "FALHOU" });
+            ok &= cond;
+        };
+        let maria = Path::new(&cfg.installed.iter().find(|p| p.id == "mariadb").unwrap().path).join("bin");
+        let client = if maria.join("mariadb.exe").exists() { "mariadb.exe" } else { "mysql.exe" };
+        let out = Command::new(maria.join(client)).args(["-u", "root", "-h", "127.0.0.1", "-P", "13307", "-N", "-e", "select version()"]).output().unwrap();
+        let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        check("MariaDB", out.status.success() && v.contains("MariaDB"), v);
+
+        for (port, server, main_sapi) in [(18095, "Apache", "apache2handler"), (18096, "Nginx", "cgi-fcgi")] {
+            let novo = get(port, "novo.test");
+            check(&format!("{server} novo.test (PHP padrão)"), novo.contains(main_sapi) && novo.ends_with("xdebug"), novo);
+            let velho = get(port, "velho.test");
+            check(&format!("{server} velho.test (PHP {old})"), velho.starts_with(&format!("{old}|cgi-fcgi")) || velho.starts_with(&format!("{}|cgi-fcgi", old.split('-').next().unwrap())), velho);
+            let adminer = get_path(port, "localhost", "/adminer/");
+            check(&format!("{server} /adminer"), adminer.contains("Adminer"), adminer.lines().next().unwrap_or("").to_string());
+        }
+
+        // WP-CLI pelo wp.bat, com o PHP principal no PATH.
+        let wp = Path::new(&cfg.installed.iter().find(|p| p.id == "wpcli").unwrap().path).join("wp.bat");
+        let php_dir = cfg.installed.iter().find(|p| p.id == "php" && p.active).unwrap().path.clone();
+        let out = Command::new("cmd.exe")
+            .args(["/D", "/C"])
+            .arg(&wp)
+            .arg("--version")
+            .env("PATH", format!("{php_dir};{}", std::env::var("PATH").unwrap_or_default()))
+            .env("PHPRC", layout.dir(&["etc", "php"]))
+            .output()
+            .unwrap();
+        check("WP-CLI", String::from_utf8_lossy(&out.stdout).contains("WP-CLI"), String::from_utf8_lossy(&out.stdout).trim().to_string());
+
+        // WordPress em português: banco no MariaDB, wp-config e página de instalação.
+        match crate::projects::create(&cfg, &layout, "wordpress", "meu-blog", &|l| println!("  wp> {l}")) {
+            Ok(msg) => {
+                write_configs(&cfg, &layout, &sites(&cfg)).unwrap();
+                m.stop("apache");
+                m.start(&cfg, &layout, "apache").unwrap_or_else(|e| panic!("apache: {e}"));
+                let page = get_path(18095, "meu-blog.test", "/wp-admin/install.php");
+                check("WordPress", page.contains("200 OK") && page.contains("pt-BR"), format!("{msg} / {}", page.lines().next().unwrap_or("")));
+                let out = Command::new(maria.join(client)).args(["-u", "root", "-h", "127.0.0.1", "-P", "13307", "-N", "-e", "show databases like 'meu_blog'"]).output().unwrap();
+                check("Banco do WordPress", String::from_utf8_lossy(&out.stdout).contains("meu_blog"), String::from_utf8_lossy(&out.stdout).trim().to_string());
+            }
+            Err(e) => check("WordPress", false, e),
+        }
+
+        // Túnel público para velho.test pelo Apache.
+        let t = crate::tunnel::Tunnels::default();
+        match t.share(&cfg, "velho.test", 18095) {
+            Ok(url) => {
+                let mut body = String::new();
+                for _ in 0..20 {
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                    if let Ok(b) = tauri::async_runtime::block_on(async { reqwest::get(&url).await?.text().await }) {
+                        if b.contains("cgi-fcgi") {
+                            body = b;
+                            break;
+                        }
+                    }
+                }
+                check("Túnel", body.contains("cgi-fcgi"), format!("{url} -> {body}"));
+                t.stop("velho.test");
+            }
+            Err(e) => check("Túnel", false, e),
+        }
+
+        for id in m.running_ids().iter().rev() {
+            m.stop(id);
+        }
+        assert!(ok, "algum item falhou (veja acima)");
     }
 
     /// HTTPS de verdade no Apache e no Nginx. O cliente confia só na CA do

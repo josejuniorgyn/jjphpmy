@@ -38,6 +38,10 @@ pub struct Settings {
     pub backup_interval_hours: u32,
     /// Quantos backups manter em `backup\` (os mais antigos são apagados).
     pub backup_keep: u32,
+    /// Xdebug ligado no php.ini (a DLL é baixada ao ligar).
+    pub xdebug: bool,
+    /// Extensões do PHP escolhidas na tela; `None` = lista padrão do JJPHPMY.
+    pub php_extensions: Option<Vec<String>>,
     pub auto_update: bool,
     /// Editor usado pelo menu "Editar configuração" da bandeja.
     pub editor: String,
@@ -59,6 +63,8 @@ impl Default for Settings {
             auto_backup: false,
             backup_interval_hours: 24,
             backup_keep: 10,
+            xdebug: false,
+            php_extensions: None,
             auto_update: false,
             editor: "notepad.exe".into(),
             add_to_path: true,
@@ -91,11 +97,14 @@ pub fn default_services() -> Vec<ServiceEntry> {
     vec![
         ServiceEntry::new("apache", 80, Some(443)),
         ServiceEntry::new("mysql", 3306, None),
+        ServiceEntry::new("mariadb", 3306, None),
         ServiceEntry::new("postgresql", 5432, None),
         ServiceEntry::new("nginx", 8080, Some(8443)),
         ServiceEntry::new("memcached", 11211, None),
         ServiceEntry::new("redis", 6379, None),
         ServiceEntry::new("mongodb", 27017, None),
+        ServiceEntry::new("opensearch", 9200, None),
+        ServiceEntry::new("elasticsearch", 9201, None),
         ServiceEntry::new("mailpit", 1025, None),
     ]
 }
@@ -130,11 +139,14 @@ pub struct Config {
     pub installed: Vec<InstalledPackage>,
     /// Chave do cookie do phpMyAdmin (`blowfish_secret`), criada uma vez.
     pub pma_secret: String,
+    /// PHP de cada site (host -> "versão-variante" de um PHP instalado), como o
+    /// MultiPHP do cPanel. Sites fora daqui usam o PHP padrão.
+    pub site_php: std::collections::BTreeMap<String, String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self { settings: Settings::default(), services: default_services(), installed: Vec::new(), pma_secret: String::new() }
+        Self { settings: Settings::default(), services: default_services(), installed: Vec::new(), pma_secret: String::new(), site_php: Default::default() }
     }
 }
 
@@ -194,10 +206,14 @@ mod tests {
     fn default_ports_do_not_conflict() {
         let mut services = default_services();
         for s in &mut services {
-            s.enabled = true;
+            // MariaDB é alternativa ao MySQL (mesma porta 3306): não liga junto.
+            s.enabled = s.id != "mariadb";
             s.ssl_enabled = true;
         }
         assert!(port_conflicts(&services).is_empty());
+        // Ligar os dois é avisado como conflito.
+        services.iter_mut().find(|s| s.id == "mariadb").unwrap().enabled = true;
+        assert_eq!(port_conflicts(&services), ["Porta 3306 usada por: mysql, mariadb"]);
     }
 
     #[test]

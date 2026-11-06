@@ -56,6 +56,12 @@ pub const TEMPLATES: &[Template] = &[
     Template { id: "vite-vue", name: "Vite + Vue", description: "Frontend Vue 3 com Vite.", needs: &["npm"] },
     Template { id: "vite-react", name: "Vite + React", description: "Frontend React com Vite.", needs: &["npm"] },
     Template { id: "vite-svelte", name: "Vite + Svelte", description: "Frontend Svelte com Vite.", needs: &["npm"] },
+    Template {
+        id: "wordpress",
+        name: "WordPress",
+        description: "WordPress em português, com o banco de dados criado no MySQL/MariaDB e o wp-config.php pronto.",
+        needs: &[],
+    },
     Template { id: "php", name: "PHP puro", description: "Só a pasta com um index.php.", needs: &[] },
 ];
 
@@ -193,6 +199,123 @@ fn run(cmdline: &str, cwd: &Path, env: &[(String, String)], log: &dyn Fn(String)
     }
 }
 
+/* ---------- WordPress ---------- */
+
+const WORDPRESS_ZIP: &str = "https://br.wordpress.org/latest-pt_BR.zip";
+
+/// Nome do banco a partir da pasta ("minha-loja" -> "minha_loja").
+pub fn db_name(name: &str) -> String {
+    name.replace('-', "_")
+}
+
+/// 64 caracteres aleatórios para as chaves do wp-config.php.
+fn random_key() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    const CHARS: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#%^&*()-_=+[]{}<>~;:,.?|";
+    let mut out = String::new();
+    while out.len() < 64 {
+        let mut h = std::collections::hash_map::RandomState::new().build_hasher();
+        h.write_usize(out.len());
+        for b in h.finish().to_le_bytes() {
+            out.push(CHARS[b as usize % CHARS.len()] as char);
+        }
+    }
+    out.truncate(64);
+    out
+}
+
+/// wp-config.php a partir do wp-config-sample.php (em português ou inglês).
+pub fn wp_config(sample: &str, db: &str, host: &str) -> String {
+    let mut s = sample
+        .replace("'nome_do_banco_de_dados_aqui'", &format!("'{db}'"))
+        .replace("'database_name_here'", &format!("'{db}'"))
+        .replace("'nome_de_usuario_aqui'", "'root'")
+        .replace("'username_here'", "'root'")
+        .replace("'senha_aqui'", "''")
+        .replace("'password_here'", "''")
+        .replace("define( 'DB_HOST', 'localhost' );", &format!("define( 'DB_HOST', '{host}' );"))
+        .replace("define( 'DB_CHARSET', 'utf8' );", "define( 'DB_CHARSET', 'utf8mb4' );");
+    for phrase in ["'coloque a sua frase única aqui'", "'put your unique phrase here'"] {
+        while let Some(pos) = s.find(phrase) {
+            s.replace_range(pos..pos + phrase.len(), &format!("'{}'", random_key()));
+        }
+    }
+    s
+}
+
+/// Banco ativo (MySQL ou MariaDB): (cliente mysql/mariadb.exe, porta).
+fn db_client(cfg: &Config) -> Result<(PathBuf, String), String> {
+    let port = crate::confgen::db_port(cfg);
+    let maria_port = cfg.service("mariadb").map(|s| s.port.to_string());
+    let id = if maria_port.as_deref() == Some(port.as_str()) && cfg.installed.iter().any(|p| p.id == "mariadb" && p.active) {
+        "mariadb"
+    } else {
+        "mysql"
+    };
+    let pkg = cfg
+        .installed
+        .iter()
+        .find(|p| p.id == id && p.active)
+        .ok_or("Instale o MySQL ou o MariaDB na aba Pacotes para criar um WordPress.")?;
+    let bin = Path::new(&pkg.path).join("bin");
+    let exe = ["mariadb.exe", "mysql.exe"].iter().map(|n| bin.join(n)).find(|p| p.exists()).ok_or("Cliente do banco (mysql.exe) não encontrado.")?;
+    Ok((exe, port))
+}
+
+/// Baixa o WordPress em português, extrai em `dir`, cria o banco e o wp-config.php.
+fn wordpress(cfg: &Config, dir: &Path, name: &str, log: &dyn Fn(String)) -> Result<(), String> {
+    let (client, port) = db_client(cfg)?;
+    let up = std::net::TcpStream::connect_timeout(
+        &std::net::SocketAddr::from(([127, 0, 0, 1], port.parse::<u16>().unwrap_or(3306))),
+        std::time::Duration::from_millis(500),
+    )
+    .is_ok();
+    if !up {
+        return Err("Inicie o MySQL (ou o MariaDB) em Serviços e Portas antes de criar um WordPress.".into());
+    }
+
+    log(format!("Baixando {WORDPRESS_ZIP}..."));
+    let tmp = std::env::temp_dir().join(format!("jjphpmy-wordpress-{}.zip", std::process::id()));
+    let bytes = tauri::async_runtime::block_on(async {
+        let c = reqwest::Client::builder()
+            .user_agent(concat!("jjphpmy/", env!("CARGO_PKG_VERSION")))
+            .timeout(std::time::Duration::from_secs(300))
+            .build()
+            .map_err(|e| e.to_string())?;
+        c.get(WORDPRESS_ZIP)
+            .send()
+            .await
+            .and_then(|r| r.error_for_status())
+            .map_err(|e| format!("Falha ao baixar o WordPress: {e}"))?
+            .bytes()
+            .await
+            .map_err(|e| e.to_string())
+    })?;
+    fs::write(&tmp, &bytes).map_err(|e| e.to_string())?;
+    log(format!("Extraindo em {}...", dir.display()));
+    let result = crate::installer::extract(&tmp, dir, |_, _| {});
+    let _ = fs::remove_file(&tmp);
+    result?;
+
+    let db = db_name(name);
+    log(format!("Criando o banco {db}..."));
+    let out = hidden(
+        Command::new(&client)
+            .args(["-u", "root", "-h", "127.0.0.1", "-P", &port, "-e"])
+            .arg(format!("CREATE DATABASE IF NOT EXISTS `{db}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")),
+    )
+    .output()
+    .map_err(|e| e.to_string())?;
+    if !out.status.success() {
+        return Err(format!("Não foi possível criar o banco {db}: {}", String::from_utf8_lossy(&out.stderr).trim()));
+    }
+
+    let sample = fs::read_to_string(dir.join("wp-config-sample.php")).map_err(|e| format!("wp-config-sample.php: {e}"))?;
+    fs::write(dir.join("wp-config.php"), wp_config(&sample, &db, &format!("127.0.0.1:{port}"))).map_err(|e| e.to_string())?;
+    log("wp-config.php criado (banco, usuário root sem senha e chaves de segurança).".into());
+    Ok(())
+}
+
 /// Cria o projeto `name` com o modelo `template` em www. Devolve a mensagem final.
 pub fn create(cfg: &Config, layout: &Layout, template: &str, name: &str, log: &dyn Fn(String)) -> Result<String, String> {
     validate_name(name)?;
@@ -219,6 +342,15 @@ pub fn create(cfg: &Config, layout: &Layout, template: &str, name: &str, log: &d
     }
     fs::create_dir_all(&www).map_err(|e| format!("Não foi possível criar {}: {e}", www.display()))?;
 
+    if template == "wordpress" {
+        wordpress(cfg, &dir, name, log)?;
+        let host = cfg.settings.hostname_pattern.replace("{name}", &crate::vhosts::slug(name));
+        return Ok(format!(
+            "WordPress {name} criado em {}, com o banco {} no MySQL/MariaDB. Abra http://{host}/ para escolher o título do site e o usuário administrador.",
+            dir.display(),
+            db_name(name)
+        ));
+    }
     if template == "php" {
         fs::create_dir_all(&dir).map_err(|e| format!("Não foi possível criar {}: {e}", dir.display()))?;
         fs::write(dir.join("index.php"), format!("<?php\n// Projeto {name}, criado pelo JJPHPMY.\necho 'Olá, {name}!';\n"))
@@ -257,9 +389,22 @@ mod tests {
     #[test]
     fn every_template_has_steps() {
         for t in TEMPLATES {
-            assert_eq!(steps(t.id, "x").is_empty(), t.id == "php", "{}", t.id);
+            assert_eq!(steps(t.id, "x").is_empty(), t.id == "php" || t.id == "wordpress", "{}", t.id);
         }
         assert_eq!(steps("vite-svelte", "app")[0].1, "npm create vite@latest app -- --template svelte");
+    }
+
+    #[test]
+    fn builds_wp_config() {
+        let sample = "define( 'DB_NAME', 'nome_do_banco_de_dados_aqui' );\ndefine( 'DB_USER', 'nome_de_usuario_aqui' );\n\
+                      define( 'DB_PASSWORD', 'senha_aqui' );\ndefine( 'DB_HOST', 'localhost' );\ndefine( 'DB_CHARSET', 'utf8' );\n\
+                      define( 'AUTH_KEY',         'coloque a sua frase única aqui' );\ndefine( 'NONCE_SALT',       'coloque a sua frase única aqui' );\n";
+        let c = wp_config(sample, "minha_loja", "127.0.0.1:3306");
+        assert!(c.contains("'DB_NAME', 'minha_loja'") && c.contains("'DB_USER', 'root'") && c.contains("'DB_PASSWORD', ''"));
+        assert!(c.contains("'DB_HOST', '127.0.0.1:3306'") && c.contains("'utf8mb4'"));
+        assert!(!c.contains("frase única"));
+        assert_eq!(db_name("minha-loja"), "minha_loja");
+        assert_eq!(random_key().len(), 64);
     }
 
     #[test]

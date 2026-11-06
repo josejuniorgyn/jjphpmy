@@ -11,8 +11,10 @@ mod projects;
 mod services;
 mod ssl;
 mod tray;
+mod tunnel;
 mod versions;
 mod vhosts;
+mod xdebug;
 
 use catalog::Catalog;
 use confgen::Layout;
@@ -27,6 +29,8 @@ pub struct AppState {
     pub config: Mutex<Config>,
     pub catalog: Catalog,
     pub services: services::Manager,
+    /// Túneis do "Compartilhar site" (cloudflared).
+    pub tunnels: tunnel::Tunnels,
     /// Vigia da pasta www (hosts virtuais automáticos).
     pub watcher: Mutex<Option<notify::RecommendedWatcher>>,
 }
@@ -304,6 +308,157 @@ async fn import_run(app: AppHandle, root: String, www: bool, mysql: bool, passwo
     result?
 }
 
+/* ---------- PHP: Xdebug, extensões e PHP por site (v0.4.0) ---------- */
+
+/// PHPs que usam o php.ini gerado: os ativos (TS/NTS) e os escolhidos por site.
+fn php_targets(cfg: &Config) -> Vec<InstalledPackage> {
+    let mut list: Vec<InstalledPackage> = cfg.installed.iter().filter(|p| p.id == "php" && p.active).cloned().collect();
+    for (_, _, p) in confgen::site_php_ports(cfg) {
+        if !list.iter().any(|x| x.same(&p.id, &p.version, p.variant.as_deref())) {
+            list.push(p.clone());
+        }
+    }
+    list
+}
+
+/// Liga ou desliga o Xdebug. Ao ligar, baixa a DLL certa para cada PHP.
+#[tauri::command]
+async fn set_xdebug(app: AppHandle, enabled: bool) -> Result<String, String> {
+    let cfg = app.state::<AppState>().config.lock().unwrap().clone();
+    let mut msgs = Vec::new();
+    if enabled {
+        let phps = php_targets(&cfg);
+        if phps.is_empty() {
+            return Err("Instale o PHP na aba Pacotes antes de ligar o Xdebug.".into());
+        }
+        msgs.extend(xdebug::ensure(&phps).await?);
+    }
+    {
+        let state = app.state::<AppState>();
+        let mut cfg = state.config.lock().unwrap();
+        cfg.settings.xdebug = enabled;
+        cfg.save()?;
+    }
+    let state = app.state::<AppState>();
+    refresh(&app, &state);
+    restart_hint(&app, &state, &["apache", "nginx"]);
+    msgs.push(if enabled {
+        "Xdebug ligado (porta 9003, modo trigger: use a extensão do navegador ou XDEBUG_TRIGGER).".into()
+    } else {
+        "Xdebug desligado.".into()
+    });
+    Ok(msgs.join("\n"))
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PhpExtensions {
+    /// PHP de onde a lista foi lida ("8.3.36-1 TS").
+    php: String,
+    available: Vec<String>,
+    enabled: Vec<String>,
+    /// true = usando a lista padrão do JJPHPMY.
+    default: bool,
+}
+
+/// Extensões disponíveis (DLLs em `ext\`) do PHP principal e as ligadas.
+#[tauri::command]
+fn php_extensions(state: State<AppState>) -> Result<PhpExtensions, String> {
+    let cfg = state.config.lock().unwrap().clone();
+    let php = php_targets(&cfg).into_iter().next().ok_or("Instale o PHP na aba Pacotes.")?;
+    let mut available: Vec<String> = std::fs::read_dir(std::path::Path::new(&php.path).join("ext"))
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .filter_map(|e| {
+            let n = e.file_name().to_string_lossy().to_lowercase();
+            let name = n.strip_prefix("php_")?.strip_suffix(".dll")?.to_string();
+            // Xdebug tem opção própria; dl_test e zend_test são só para testes do PHP.
+            (!["xdebug", "dl_test", "zend_test", "opcache"].contains(&name.as_str())).then_some(name)
+        })
+        .collect();
+    available.sort();
+    let enabled = match &cfg.settings.php_extensions {
+        Some(list) => list.clone(),
+        None => confgen::PHP_EXTENSIONS.iter().map(|s| s.to_string()).collect(),
+    };
+    Ok(PhpExtensions {
+        php: format!("{} {}", php.version, php.variant.as_deref().unwrap_or("ts").to_uppercase()),
+        available,
+        enabled,
+        default: cfg.settings.php_extensions.is_none(),
+    })
+}
+
+/// Grava as extensões escolhidas (`None` volta à lista padrão) e refaz o php.ini.
+#[tauri::command]
+fn save_php_extensions(app: AppHandle, state: State<AppState>, list: Option<Vec<String>>) -> Result<(), String> {
+    {
+        let mut cfg = state.config.lock().unwrap();
+        cfg.settings.php_extensions = list;
+        cfg.save()?;
+    }
+    refresh(&app, &state);
+    restart_hint(&app, &state, &["apache", "nginx"]);
+    Ok(())
+}
+
+/// PHP de um site (`key` = "versão-variante"; `None` = PHP padrão).
+#[tauri::command]
+fn set_site_php(app: AppHandle, state: State<AppState>, host: String, key: Option<String>) -> Result<(), String> {
+    {
+        let mut cfg = state.config.lock().unwrap();
+        match key.filter(|k| !k.is_empty()) {
+            Some(k) => {
+                if !cfg.installed.iter().any(|p| p.id == "php" && confgen::php_key(p) == k) {
+                    return Err(format!("O PHP {k} não está instalado."));
+                }
+                cfg.site_php.insert(host, k);
+            }
+            None => {
+                cfg.site_php.remove(&host);
+            }
+        }
+        cfg.save()?;
+    }
+    // refresh regrava os php.ini e os auto.*.conf; sync_sites reinicia o servidor web.
+    refresh(&app, &state);
+    Ok(())
+}
+
+/* ---------- Compartilhar site (Cloudflare Tunnel) ---------- */
+
+/// Abre um link público temporário para o site (`host` = "loja.test").
+#[tauri::command]
+async fn share_site(app: AppHandle, host: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let cfg = state.config.lock().unwrap().clone();
+        // O túnel aponta para o servidor web que estiver rodando.
+        let server = ["apache", "nginx"]
+            .into_iter()
+            .find(|s| state.services.is_running(s))
+            .ok_or("Inicie o Apache ou o Nginx em Serviços e Portas antes de compartilhar.")?;
+        let port = cfg.service(server).map(|s| s.port).unwrap_or(80);
+        let url = state.tunnels.share(&cfg, &host, port)?;
+        let _ = app.emit("sites-changed", ());
+        Ok(url)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn stop_share(app: AppHandle, state: State<AppState>, host: String) {
+    state.tunnels.stop(&host);
+    let _ = app.emit("sites-changed", ());
+}
+
+/// Links ativos: host -> URL pública.
+#[tauri::command]
+fn shared_sites(state: State<AppState>) -> std::collections::HashMap<String, String> {
+    state.tunnels.list()
+}
+
 /* ---------- Novo projeto ---------- */
 
 #[tauri::command]
@@ -571,7 +726,7 @@ async fn install_packages(
     refresh(&app, &state);
 
     // Bancos novos: cria a pasta de dados (o MySQL leva alguns segundos).
-    for id in plan.install_order.iter().filter(|id| ["mysql", "postgresql", "mongodb", "redis"].contains(&id.as_str())) {
+    for id in plan.install_order.iter().filter(|id| ["mysql", "mariadb", "postgresql", "mongodb", "redis", "opensearch", "elasticsearch"].contains(&id.as_str())) {
         let _ = app.emit(
             "install-progress",
             installer::Progress {
@@ -588,7 +743,7 @@ async fn install_packages(
     let result = tauri::async_runtime::spawn_blocking(move || confgen::init_data(&cfg, &Layout::system()))
         .await
         .map_err(|e| e.to_string())?;
-    for id in plan.install_order.iter().filter(|id| ["mysql", "postgresql", "mongodb", "redis"].contains(&id.as_str())) {
+    for id in plan.install_order.iter().filter(|id| ["mysql", "mariadb", "postgresql", "mongodb", "redis", "opensearch", "elasticsearch"].contains(&id.as_str())) {
         let (stage, message) = match &result {
             Ok(_) => ("done", "Pronto. Banco de dados criado.".to_string()),
             Err(e) => ("error", e.clone()),
@@ -820,7 +975,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(AppState { config: Mutex::new(config), catalog: Catalog::embedded(), services: Default::default(), watcher: Mutex::new(None) })
+        .manage(AppState { config: Mutex::new(config), catalog: Catalog::embedded(), services: Default::default(), tunnels: Default::default(), watcher: Mutex::new(None) })
         .setup(move |app| {
             for dir in ["bin", "etc", "data", "www", "logs", "backup", "tmp", "config"] {
                 let _ = std::fs::create_dir_all(base_path(&[dir]));
@@ -858,7 +1013,7 @@ pub fn run() {
                 std::thread::sleep(std::time::Duration::from_secs(60));
                 let state = handle.state::<AppState>();
                 let settings = state.config.lock().unwrap().settings.clone();
-                let db_running = ["mysql", "postgresql", "mongodb"].iter().any(|id| state.services.is_running(id));
+                let db_running = ["mysql", "mariadb", "postgresql", "mongodb"].iter().any(|id| state.services.is_running(id));
                 if settings.auto_backup && db_running && backup::due(&layout(), settings.backup_interval_hours) {
                     match do_backup(&handle) {
                         Ok(r) if !r.skipped.is_empty() => toast(&handle, &[backup_message(&r)]),
@@ -917,6 +1072,13 @@ pub fn run() {
             import_detect,
             import_run,
             project_templates,
+            set_xdebug,
+            php_extensions,
+            save_php_extensions,
+            set_site_php,
+            share_site,
+            stop_share,
+            shared_sites,
             create_project,
             check_update,
             pix_qr,

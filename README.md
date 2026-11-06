@@ -37,10 +37,11 @@ instalados com um clique, só o que você escolher.
 | Categoria | Programas |
 |---|---|
 | Servidores web | **Apache** (com PHP Thread Safe) e **Nginx** (com PHP-CGI) |
-| Linguagens | **PHP** (do 7.4 ao mais novo, várias versões lado a lado), **Composer**, **Node.js** (com rótulo LTS), **Python** |
-| Bancos de dados | **MySQL**, **PostgreSQL**, **MongoDB**, **phpMyAdmin** |
+| Linguagens | **PHP** (do 7.4 ao mais novo, várias versões lado a lado), **Composer**, **WP-CLI**, **Node.js** (com rótulo LTS), **Python** |
+| Bancos de dados | **MySQL**, **MariaDB**, **PostgreSQL**, **MongoDB**, **phpMyAdmin**, **Adminer** |
+| Busca (opcional, pesado) | **OpenSearch** e **Elasticsearch** (para Magento), com memória limitada a 1 GB |
 | Cache | **Redis**, **Memcached** |
-| Ferramentas | **Mailpit** (caixa de e-mails de teste), **Git** + Git Bash, **Notepad++**, **WinSCP** (SFTP/FTP) e atalho para o **FileZilla** |
+| Ferramentas | **Mailpit** (caixa de e-mails de teste), **Git** + Git Bash, **Notepad++**, **WinSCP** (SFTP/FTP), **Cloudflare Tunnel** e atalho para o **FileZilla** |
 
 Escolha a versão de cada um ou deixe em **Mais recente**. Dá para ter várias versões instaladas e trocar a ativa com um clique.
 
@@ -52,7 +53,16 @@ Escolha um modelo, digite o nome e pronto: o projeto é criado em `www` e já ab
 - Laravel + **Vue** (Inertia), Laravel + **React** (Inertia), Laravel + **Livewire**
 - **Laravel** (API ou projeto simples) e **Symfony**
 - **Vite** + Vue, React ou Svelte
+- **WordPress** em português, já com o banco criado e o `wp-config.php` pronto
 - **PHP puro**
+
+### 🐘 PHP do seu jeito
+- **PHP por site**, como o MultiPHP do cPanel: cada site pode usar uma versão diferente do PHP (Apache e Nginx).
+- **Xdebug** com um clique: o JJPHPMY baixa a DLL oficial certa para cada PHP (porta 9003, extensão PHP Debug do VS Code).
+- **Extensões do PHP** ligadas e desligadas em caixas de marcar.
+
+### 🔗 Compartilhar site
+- Botão **Compartilhar** em cada site: cria um link público temporário `https://...trycloudflare.com` (Cloudflare Tunnel, sem conta) para mostrar o site a um cliente. Clique em **Parar** e o link deixa de funcionar.
 
 ### 🖥️ Serviços sob controle
 - **Iniciar, parar e reiniciar** cada serviço, ou todos de uma vez, pela janela ou pelo ícone da bandeja.
@@ -78,7 +88,7 @@ Escolha um modelo, digite o nome e pronto: o projeto é criado em `www` e já ab
 - **A instalação antiga só é lida, nunca alterada.**
 
 ### 💾 Backup automático
-- Backup do MySQL, do PostgreSQL e do MongoDB em `.zip`, no intervalo que você escolher (de hora em hora até semanal).
+- Backup do MySQL, do MariaDB, do PostgreSQL e do MongoDB em `.zip`, no intervalo que você escolher (de hora em hora até semanal).
 - Mantém os últimos N backups e apaga os mais antigos.
 - Botões **Fazer backup agora** e **Restaurar**.
 
@@ -153,12 +163,13 @@ Tudo numa pasta só: fácil de achar, de fazer backup e de remover.
 |---|---|
 | Apache | 80 (HTTPS 443) |
 | Nginx | 8080 (HTTPS 8443) |
-| MySQL | 3306 |
+| MySQL ou MariaDB | 3306 |
 | PostgreSQL | 5432 |
 | MongoDB | 27017 |
 | Redis | 6379 |
 | Memcached | 11211 |
 | Mailpit | 1025 (SMTP) e 8025 (painel web) |
+| OpenSearch / Elasticsearch | 9200 / 9201 |
 
 Todas podem ser alteradas na aba **Serviços e Portas**.
 

@@ -115,20 +115,26 @@ pub fn run(cfg: &Config, layout: &Layout, running: &[String], keep: usize) -> Re
     let installed = |id: &str| cfg.installed.iter().any(|p| p.id == id && p.active);
     let mut files: Vec<(String, PathBuf)> = Vec::new();
 
-    if installed("mysql") {
-        let out = work.join("mysql.sql");
-        match (is_running("mysql"), active_bin(cfg, "mysql", "mysqldump.exe")) {
-            (false, _) => report.skipped.push("MySQL (parado)".into()),
-            (_, None) => report.skipped.push("MySQL (mysqldump.exe não encontrado)".into()),
+    // MySQL e MariaDB: mesmo dump (o MariaDB novo chama o programa de mariadb-dump).
+    for (id, name, dumpers) in [("mysql", "MySQL", ["mysqldump.exe", "mysqldump.exe"]), ("mariadb", "MariaDB", ["mariadb-dump.exe", "mysqldump.exe"])] {
+        if !installed(id) {
+            continue;
+        }
+        let file = format!("{id}.sql");
+        let out = work.join(&file);
+        let exe = dumpers.iter().find_map(|d| active_bin(cfg, id, d));
+        match (is_running(id), exe) {
+            (false, _) => report.skipped.push(format!("{name} (parado)")),
+            (_, None) => report.skipped.push(format!("{name} ({} não encontrado)", dumpers[0])),
             (true, Some(exe)) => {
                 let mut cmd = Command::new(exe);
-                cmd.args(["-u", "root", "-h", "127.0.0.1", "-P", &port(cfg, "mysql")])
+                cmd.args(["-u", "root", "-h", "127.0.0.1", "-P", &port(cfg, id)])
                     .args(["--all-databases", "--single-transaction", "--routines", "--events", "--triggers"])
                     .arg(format!("--result-file={}", out.display()));
-                match dump(&mut cmd, "mysqldump", &out) {
+                match dump(&mut cmd, dumpers[0].trim_end_matches(".exe"), &out) {
                     Ok(()) => {
-                        files.push(("mysql.sql".into(), out));
-                        report.included.push("MySQL".into());
+                        files.push((file, out));
+                        report.included.push(name.into());
                     }
                     Err(e) => report.skipped.push(e),
                 }
@@ -209,7 +215,7 @@ pub fn restore(cfg: &Config, layout: &Layout, name: &str, running: &[String]) ->
     fs::create_dir_all(&work).map_err(|e| e.to_string())?;
     let mut done = Vec::new();
 
-    for (entry, id, name_pt) in [("mysql.sql", "mysql", "MySQL"), ("postgresql.sql", "postgresql", "PostgreSQL")] {
+    for (entry, id, name_pt) in [("mysql.sql", "mysql", "MySQL"), ("mariadb.sql", "mariadb", "MariaDB"), ("postgresql.sql", "postgresql", "PostgreSQL")] {
         let Ok(mut f) = zip.by_name(entry) else { continue };
         if !running.iter().any(|r| r == id) {
             done.push(format!("{name_pt}: não restaurado, o serviço está parado."));
@@ -218,10 +224,13 @@ pub fn restore(cfg: &Config, layout: &Layout, name: &str, running: &[String]) ->
         let file = work.join(entry);
         io::copy(&mut f, &mut File::create(&file).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
         let mut cmd = match id {
-            "mysql" => {
-                let exe = active_bin(cfg, "mysql", "mysql.exe").ok_or("mysql.exe não encontrado.")?;
+            "mysql" | "mariadb" => {
+                let exe = ["mariadb.exe", "mysql.exe"]
+                    .iter()
+                    .find_map(|c| active_bin(cfg, id, c))
+                    .ok_or("mysql.exe não encontrado.")?;
                 let mut c = Command::new(exe);
-                c.args(["-u", "root", "-h", "127.0.0.1", "-P", &port(cfg, "mysql"), "--max-allowed-packet=512M"])
+                c.args(["-u", "root", "-h", "127.0.0.1", "-P", &port(cfg, id), "--max-allowed-packet=512M"])
                     .stdin(File::open(&file).map_err(|e| e.to_string())?);
                 c
             }

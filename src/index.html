@@ -69,10 +69,26 @@
         </fieldset>
 
         <fieldset>
+          <legend>PHP</legend>
+          <label class="check"><input type="checkbox" id="xdebug"> Xdebug (depuração passo a passo)</label>
+          <p class="hint">Ao ligar, o JJPHPMY baixa a DLL oficial do Xdebug para cada PHP. Ele só depura quando a requisição pede (XDEBUG_TRIGGER), na porta 9003: no VS Code, use a extensão PHP Debug.</p>
+          <details id="php-ext-box">
+            <summary>Extensões do PHP</summary>
+            <p id="php-ext-info" class="hint"></p>
+            <div id="php-ext" class="ext-grid"></div>
+            <div class="inline-actions">
+              <button id="btn-ext-save" class="secondary" type="button">Salvar extensões</button>
+              <button id="btn-ext-default" class="link" type="button">Voltar ao padrão</button>
+            </div>
+          </details>
+        </fieldset>
+
+        <fieldset>
           <legend>Hosts virtuais</legend>
           <label class="check"><input type="checkbox" name="autoVirtualHosts"> Criar automaticamente os hosts virtuais</label>
           <label>Hostname <input type="text" name="hostnamePattern" placeholder="{name}.test"></label>
           <p class="hint">Cada pasta dentro do Document Root vira um site. O Windows pede permissão de administrador para atualizar o arquivo hosts.</p>
+          <p class="hint">Em cada site você pode escolher a versão do PHP (como o MultiPHP do cPanel) e criar um link público temporário para mostrar o site a outra pessoa (Cloudflare Tunnel).</p>
           <ul id="sites" class="sites"></ul>
         </fieldset>
 
@@ -187,6 +203,44 @@
         <p><strong>E-mail:</strong> <a href="#" id="author-email">josejuniorgyn@gmail.com</a></p>
         <p><strong>Licença:</strong> GPL-3.0 (software livre e de código aberto) ·
           <a href="#" id="repo-link">github.com/josejuniorgyn/jjphpmy</a></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Recursos e Funcionalidades</legend>
+        <div class="features">
+          <div class="feature">
+            <h3><span class="feature-icon" aria-hidden="true">🚀</span> <span>Novo projeto com um clique</span></h3>
+            <ul><li>Laravel + Vue, React ou Livewire</li><li>Laravel e Symfony</li><li>Vite + Vue, React ou Svelte</li><li>WordPress em português, com o banco pronto</li><li>PHP puro</li></ul>
+          </div>
+          <div class="feature">
+            <h3><span class="feature-icon" aria-hidden="true">🐘</span> <span>PHP do seu jeito</span></h3>
+            <ul><li>Várias versões do PHP lado a lado</li><li>PHP por site, como o MultiPHP do cPanel</li><li>Xdebug com um clique</li><li>Extensões do PHP em caixas de marcar</li><li>Composer e WP-CLI</li></ul>
+          </div>
+          <div class="feature">
+            <h3><span class="feature-icon" aria-hidden="true">🗄️</span> <span>Bancos de dados</span></h3>
+            <ul><li>MySQL, MariaDB, PostgreSQL e MongoDB</li><li>phpMyAdmin e Adminer</li><li>Redis e Memcached</li><li>OpenSearch e Elasticsearch (opcionais)</li></ul>
+          </div>
+          <div class="feature">
+            <h3><span class="feature-icon" aria-hidden="true">🌐</span> <span>Sites .test e HTTPS</span></h3>
+            <ul><li>Cada pasta em www vira um site nome.test</li><li>HTTPS local com certificado próprio</li><li>Compartilhar site com um link público temporário</li></ul>
+          </div>
+          <div class="feature">
+            <h3><span class="feature-icon" aria-hidden="true">🖥️</span> <span>Serviços sob controle</span></h3>
+            <ul><li>Iniciar, parar e reiniciar pela janela ou pela bandeja</li><li>Avisa quem está usando a porta</li><li>Nada fica rodando escondido ao fechar</li></ul>
+          </div>
+          <div class="feature">
+            <h3><span class="feature-icon" aria-hidden="true">⚙️</span> <span>Configuração pronta</span></h3>
+            <ul><li>Arquivos gerados com as portas e pastas escolhidas</li><li>Suas edições são respeitadas</li><li>Programas no PATH e Terminal configurado</li><li>Mailpit recebe os e-mails de teste</li></ul>
+          </div>
+          <div class="feature">
+            <h3><span class="feature-icon" aria-hidden="true">📦</span> <span>Migração e backup</span></h3>
+            <ul><li>Importa sites e bancos do Laragon e do XAMPP</li><li>Backup automático dos bancos</li><li>Restauração de backup com um clique</li></ul>
+          </div>
+          <div class="feature">
+            <h3><span class="feature-icon" aria-hidden="true">🔄</span> <span>Sempre em dia</span></h3>
+            <ul><li>Atualização automática pelo GitHub, com assinatura</li><li>9 idiomas</li><li>Não pede administrador</li></ul>
+          </div>
+        </div>
       </fieldset>
 
       <fieldset>

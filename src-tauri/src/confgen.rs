@@ -21,6 +21,8 @@ pub const PHP_CGI_PORT: u16 = 9000;
 const HTTPD: &str = include_str!("../templates/httpd.conf");
 const HTTPD_PHP: &str = include_str!("../templates/httpd-php.conf");
 const HTTPD_PMA: &str = include_str!("../templates/httpd-phpmyadmin.conf");
+const HTTPD_ADMINER: &str = include_str!("../templates/httpd-adminer.conf");
+const NGINX_ADMINER: &str = include_str!("../templates/nginx-adminer.conf");
 const HTTPD_SSL: &str = include_str!("../templates/httpd-ssl.conf");
 const NGINX: &str = include_str!("../templates/nginx.conf");
 const NGINX_PHP: &str = include_str!("../templates/nginx-php.conf");
@@ -31,8 +33,9 @@ const MONGOD: &str = include_str!("../templates/mongod.cfg");
 const REDIS: &str = include_str!("../templates/redis.conf");
 const PMA_CONFIG: &str = include_str!("../templates/config.inc.php");
 
-/// Extensões ligadas no php.ini, quando a DLL existe na versão instalada.
-const PHP_EXTENSIONS: &[&str] = &[
+/// Extensões ligadas no php.ini por padrão, quando a DLL existe na versão
+/// instalada. A tela "Extensões do PHP" troca esta lista (`settings.php_extensions`).
+pub const PHP_EXTENSIONS: &[&str] = &[
     "bz2", "curl", "exif", "fileinfo", "gd", "gettext", "intl", "mbstring", "mysqli", "openssl", "pdo_mysql",
     "pdo_pgsql", "pdo_sqlite", "pgsql", "soap", "sockets", "sodium", "sqlite3", "xsl", "zip",
 ];
@@ -82,8 +85,12 @@ struct Active<'a> {
     php_ts: Option<&'a InstalledPackage>,
     php_nts: Option<&'a InstalledPackage>,
     mysql: Option<&'a InstalledPackage>,
+    mariadb: Option<&'a InstalledPackage>,
+    adminer: Option<&'a InstalledPackage>,
     postgresql: Option<&'a InstalledPackage>,
     mongodb: Option<&'a InstalledPackage>,
+    opensearch: Option<&'a InstalledPackage>,
+    elasticsearch: Option<&'a InstalledPackage>,
     redis: Option<&'a InstalledPackage>,
     phpmyadmin: Option<&'a InstalledPackage>,
 }
@@ -97,8 +104,12 @@ fn active(installed: &[InstalledPackage]) -> Active<'_> {
             ("php", Some("nts")) => &mut a.php_nts,
             ("php", _) => &mut a.php_ts,
             ("mysql", _) => &mut a.mysql,
+            ("mariadb", _) => &mut a.mariadb,
+            ("adminer", _) => &mut a.adminer,
             ("postgresql", _) => &mut a.postgresql,
             ("mongodb", _) => &mut a.mongodb,
+            ("opensearch", _) => &mut a.opensearch,
+            ("elasticsearch", _) => &mut a.elasticsearch,
             ("redis", _) => &mut a.redis,
             ("phpmyadmin", _) => &mut a.phpmyadmin,
             _ => continue,
@@ -123,8 +134,11 @@ pub fn data_dir(cfg: &Config, p: &InstalledPackage) -> Option<PathBuf> {
     let root = PathBuf::from(&cfg.settings.data_dir);
     match p.id.as_str() {
         "mysql" => Some(root.join(format!("mysql-{}", major_minor(&p.version)))),
+        "mariadb" => Some(root.join(format!("mariadb-{}", major_minor(&p.version)))),
         "postgresql" => Some(root.join(format!("postgresql-{}", major(&p.version)))),
         "mongodb" => Some(root.join(format!("mongodb-{}", major(&p.version)))),
+        "opensearch" => Some(root.join(format!("opensearch-{}", major(&p.version)))),
+        "elasticsearch" => Some(root.join(format!("elasticsearch-{}", major(&p.version)))),
         "redis" => Some(root.join("redis")),
         _ => None,
     }
@@ -132,6 +146,37 @@ pub fn data_dir(cfg: &Config, p: &InstalledPackage) -> Option<PathBuf> {
 
 fn port(cfg: &Config, id: &str, default: u16) -> String {
     cfg.service(id).map(|s| s.port).unwrap_or(default).to_string()
+}
+
+/// Porta do banco que o phpMyAdmin e o Adminer usam: o MySQL, ou o MariaDB
+/// quando só ele está instalado (ou ativado no lugar do MySQL).
+pub fn db_port(cfg: &Config) -> String {
+    let a = active(&cfg.installed);
+    let enabled = |id: &str| cfg.service(id).is_some_and(|s| s.enabled);
+    let use_maria = a.mariadb.is_some() && (a.mysql.is_none() || (enabled("mariadb") && !enabled("mysql")));
+    if use_maria { port(cfg, "mariadb", 3306) } else { port(cfg, "mysql", 3306) }
+}
+
+/// Chave de um PHP instalado para o "PHP por site": "8.3.36-1-ts".
+pub fn php_key(p: &InstalledPackage) -> String {
+    format!("{}-{}", p.version, p.variant.as_deref().unwrap_or("ts"))
+}
+
+/// PHP escolhido por site: (chave, porta do php-cgi, pacote), uma entrada por
+/// versão usada. As portas vão de 9100 em diante, na ordem das chaves.
+pub fn site_php_ports(cfg: &Config) -> Vec<(String, u16, &InstalledPackage)> {
+    let keys: std::collections::BTreeSet<&String> = cfg.site_php.values().collect();
+    keys.into_iter()
+        .filter_map(|k| cfg.installed.iter().find(|p| p.id == "php" && &php_key(p) == k).map(|p| (k.clone(), p)))
+        .enumerate()
+        .map(|(i, (k, p))| (k, 9100 + i as u16, p))
+        .collect()
+}
+
+/// Porta do php-cgi do site, se ele tiver um PHP próprio.
+pub fn site_php_port(cfg: &Config, host: &str) -> Option<u16> {
+    let key = cfg.site_php.get(host)?;
+    site_php_ports(cfg).into_iter().find(|(k, _, _)| k == key).map(|(_, port, _)| port)
 }
 
 /// Pasta da versão ativa de um pacote (no PHP, `ts` ou `nts`).
@@ -156,6 +201,18 @@ pub fn nginx_php_block(cfg: &Config) -> String {
             &[("nginx", fwd(&n.path)), ("php_version", p.version.clone()), ("fastcgi_port", PHP_CGI_PORT.to_string())],
         ),
         _ => String::new(),
+    }
+}
+
+/// Bloco PHP do Nginx apontando para outra porta (PHP por site).
+pub fn nginx_php_block_port(cfg: &Config, port: u16) -> String {
+    let a = active(&cfg.installed);
+    match a.nginx {
+        Some(n) => render(
+            NGINX_PHP,
+            &[("nginx", fwd(&n.path)), ("php_version", format!("do site, porta {port}")), ("fastcgi_port", port.to_string())],
+        ),
+        None => String::new(),
     }
 }
 
@@ -214,10 +271,21 @@ pub fn php_ini(cfg: &Config, layout: &Layout, php: &InstalledPackage) -> String 
     ] {
         set_ini(&mut ini, key, &value);
     }
-    for ext in PHP_EXTENSIONS {
+    let chosen: Vec<String> = match &cfg.settings.php_extensions {
+        Some(list) => list.clone(),
+        None => PHP_EXTENSIONS.iter().map(|s| s.to_string()).collect(),
+    };
+    for ext in &chosen {
         if dir.join("ext").join(format!("php_{ext}.dll")).exists() {
             enable_extension(&mut ini, ext);
         }
+    }
+    // Xdebug: só quando ligado e com a DLL baixada para esta versão.
+    if cfg.settings.xdebug && dir.join("ext").join("php_xdebug.dll").exists() {
+        ini.push_str(
+            "\n[xdebug]\nzend_extension=xdebug\nxdebug.mode=debug\nxdebug.start_with_request=trigger\n\
+             xdebug.client_host=127.0.0.1\nxdebug.client_port=9003\n",
+        );
     }
     let variant = if php.variant.as_deref() == Some("nts") { "Non-Thread Safe" } else { "Thread Safe" };
     format!(
@@ -269,6 +337,10 @@ pub fn plan(cfg: &Config, layout: &Layout) -> Vec<GenFile> {
     if let (Some(_), Some(nts)) = (a.php_ts, a.php_nts) {
         out.push(GenFile { path: etc.join("php").join("php-cgi.ini"), content: php_ini(cfg, layout, nts) });
     }
+    // PHP por site: um php.ini para cada versão usada (php-cgi nas portas 9100+).
+    for (key, _, p) in site_php_ports(cfg) {
+        out.push(GenFile { path: etc.join("php").join(format!("php-{key}.ini")), content: php_ini(cfg, layout, p) });
+    }
 
     if let Some(apache) = a.apache {
         let php_block = match a.php_ts.and_then(|p| Some((p, php_apache_module(p)?))) {
@@ -278,10 +350,13 @@ pub fn plan(cfg: &Config, layout: &Layout) -> Vec<GenFile> {
             ),
             None => String::new(),
         };
-        let pma_block = match (a.phpmyadmin, a.php_ts) {
+        let mut pma_block = match (a.phpmyadmin, a.php_ts) {
             (Some(p), Some(_)) => render(HTTPD_PMA, &pma_vars(p)),
             _ => String::new(),
         };
+        if let (Some(ad), Some(_)) = (a.adminer, a.php_ts) {
+            pma_block += &render(HTTPD_ADMINER, &[("adminer", fwd(&ad.path)), ("adminer_version", ad.version.clone())]);
+        }
         let ssl_block = match crate::ssl::port(cfg, "apache") {
             Some(p) => render(
                 HTTPD_SSL,
@@ -312,13 +387,19 @@ pub fn plan(cfg: &Config, layout: &Layout) -> Vec<GenFile> {
             ),
             None => String::new(),
         };
-        let pma_block = match (a.phpmyadmin, a.php_nts) {
+        let mut pma_block = match (a.phpmyadmin, a.php_nts) {
             (Some(p), Some(_)) => render(
                 NGINX_PMA,
                 &with(pma_vars(p).into_iter().chain([("nginx", nginx_path.clone())]).collect()),
             ),
             _ => String::new(),
         };
+        if let (Some(ad), Some(_)) = (a.adminer, a.php_nts) {
+            pma_block += &render(
+                NGINX_ADMINER,
+                &with(vec![("adminer", fwd(&ad.path)), ("adminer_version", ad.version.clone()), ("nginx", nginx_path.clone())]),
+            );
+        }
         let vars = with(vec![
             ("nginx", nginx_path),
             ("port", port(cfg, "nginx", 8080)),
@@ -336,6 +417,40 @@ pub fn plan(cfg: &Config, layout: &Layout) -> Vec<GenFile> {
             ("datadir", fwd(data_dir(cfg, p).unwrap_or_default())),
         ]);
         out.push(GenFile { path: etc.join("mysql").join("my.ini"), content: render(MY_INI, &vars) });
+    }
+
+    if let Some(p) = a.mariadb {
+        let vars = with(vec![
+            ("mysql", fwd(&p.path)),
+            ("port", port(cfg, "mariadb", 3306)),
+            ("datadir", fwd(data_dir(cfg, p).unwrap_or_default())),
+            ("logs", fwd(layout.dir(&["logs"]))),
+        ]);
+        let ini = render(MY_INI, &vars).replace("/mysql/mysql.err", "/mariadb/mariadb.err");
+        out.push(GenFile { path: etc.join("mariadb").join("my.ini"), content: ini });
+    }
+
+    // OpenSearch / Elasticsearch: só em 127.0.0.1, um nó, segurança desligada
+    // (como os outros serviços locais) e memória limitada.
+    for (id, p, security) in [
+        ("opensearch", a.opensearch, "plugins.security.disabled: true"),
+        ("elasticsearch", a.elasticsearch, "xpack.security.enabled: false\nxpack.security.enrollment.enabled: false"),
+    ] {
+        let Some(p) = p else { continue };
+        let conf = etc.join(id);
+        let yml = format!(
+            "# Gerado pelo JJPHPMY. Se você editar este arquivo, o JJPHPMY deixa de sobrescrevê-lo.\n\
+             cluster.name: jjphpmy\nnode.name: jjphpmy\npath.data: \"{}\"\npath.logs: \"{}\"\n\
+             network.host: 127.0.0.1\nhttp.port: {}\ndiscovery.type: single-node\n{security}\n",
+            fwd(data_dir(cfg, p).unwrap_or_default()),
+            fwd(layout.dir(&["logs", id])),
+            port(cfg, id, 9200),
+        );
+        out.push(GenFile { path: conf.join(format!("{id}.yml")), content: yml });
+        out.push(GenFile {
+            path: conf.join("jvm.options.d").join("jjphpmy.options"),
+            content: "# Gerado pelo JJPHPMY: memória do Java (aumente se precisar).\n-Xms512m\n-Xmx1g\n".into(),
+        });
     }
 
     if a.postgresql.is_some() {
@@ -359,7 +474,7 @@ pub fn plan(cfg: &Config, layout: &Layout) -> Vec<GenFile> {
 
     if let Some(p) = a.phpmyadmin {
         let main = etc.join("phpmyadmin").join("config.inc.php");
-        let vars = with(vec![("secret", cfg.pma_secret.clone()), ("mysql_port", port(cfg, "mysql", 3306))]);
+        let vars = with(vec![("secret", cfg.pma_secret.clone()), ("mysql_port", db_port(cfg))]);
         // O phpMyAdmin lê o config.inc.php da própria pasta; ele só inclui o de etc\.
         let stub = format!(
             "<?php\n// Gerado pelo JJPHPMY: a configuração fica em {}\nrequire '{}';\n",
@@ -374,7 +489,7 @@ pub fn plan(cfg: &Config, layout: &Layout) -> Vec<GenFile> {
 
 /// Pastas de logs e temporárias que os serviços esperam encontrar.
 fn ensure_dirs(cfg: &Config, layout: &Layout) {
-    let mut dirs: Vec<PathBuf> = ["apache", "nginx", "mysql", "postgresql", "mongodb", "redis", "php"]
+    let mut dirs: Vec<PathBuf> = ["apache", "nginx", "mysql", "mariadb", "postgresql", "mongodb", "opensearch", "elasticsearch", "redis", "php"]
         .iter()
         .map(|id| layout.dir(&["logs", id]))
         .collect();
@@ -415,9 +530,36 @@ fn state_file(layout: &Layout) -> PathBuf {
     layout.dir(&["etc", ".gerados.json"])
 }
 
+/// OpenSearch e Elasticsearch leem a configuração de uma pasta inteira
+/// (`etc\{id}`, via OPENSEARCH_PATH_CONF / ES_PATH_CONF): copia os arquivos
+/// padrão da versão instalada que ainda não existam lá.
+fn prepare_search_conf(cfg: &Config, layout: &Layout) {
+    let a = active(&cfg.installed);
+    for (id, p) in [("opensearch", a.opensearch), ("elasticsearch", a.elasticsearch)] {
+        let Some(p) = p else { continue };
+        let src = Path::new(&p.path).join("config");
+        let dst = layout.dir(&["etc", id]);
+        let mut stack = vec![src.clone()];
+        while let Some(d) = stack.pop() {
+            for e in fs::read_dir(&d).into_iter().flatten().flatten() {
+                let path = e.path();
+                let Ok(rel) = path.strip_prefix(&src) else { continue };
+                let target = dst.join(rel);
+                if path.is_dir() {
+                    stack.push(path);
+                } else if !target.exists() && rel.to_string_lossy() != format!("{id}.yml") {
+                    let _ = fs::create_dir_all(target.parent().unwrap_or(&dst));
+                    let _ = fs::copy(&path, &target);
+                }
+            }
+        }
+    }
+}
+
 /// Grava os arquivos do `plan`. Sem `force`, mantém os que o usuário editou.
 pub fn generate(cfg: &Config, layout: &Layout, force: bool) -> Result<Report, String> {
     ensure_dirs(cfg, layout);
+    prepare_search_conf(cfg, layout);
     let state_path = state_file(layout);
     let mut state: BTreeMap<String, String> =
         fs::read_to_string(&state_path).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
@@ -508,6 +650,23 @@ pub fn init_data(cfg: &Config, layout: &Layout) -> Result<Vec<String>, String> {
         }
     }
 
+    // MariaDB: root sem senha, como no MySQL. O instalador de dados mudou de
+    // nome (mysql_install_db.exe até a 10.x, mariadb-install-db.exe depois).
+    if let Some(p) = a.mariadb {
+        let data = data_dir(cfg, p).unwrap_or_default();
+        if is_empty_dir(&data) {
+            let bin = Path::new(&p.path).join("bin");
+            let tool = ["mariadb-install-db.exe", "mysql_install_db.exe"]
+                .iter()
+                .map(|n| bin.join(n))
+                .find(|t| t.exists())
+                .ok_or("O MariaDB instalado não tem o mariadb-install-db.exe.")?;
+            let _ = fs::remove_dir(&data);
+            run(Command::new(&tool).arg(format!("--datadir={}", data.display())), "A inicialização do MariaDB")?;
+            done.push(format!("MariaDB {}", p.version));
+        }
+    }
+
     if let Some(p) = a.postgresql {
         let data = data_dir(cfg, p).unwrap_or_default();
         if is_empty_dir(&data) {
@@ -528,7 +687,7 @@ pub fn init_data(cfg: &Config, layout: &Layout) -> Result<Vec<String>, String> {
         }
     }
 
-    for p in [a.mongodb, a.redis].into_iter().flatten() {
+    for p in [a.mongodb, a.redis, a.opensearch, a.elasticsearch].into_iter().flatten() {
         if let Some(data) = data_dir(cfg, p) {
             if !data.exists() {
                 fs::create_dir_all(&data).map_err(|e| format!("Não foi possível criar {}: {e}", data.display()))?;

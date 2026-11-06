@@ -87,6 +87,22 @@
       ]
     },
     {
+      "id": "mariadb",
+      "name": "MariaDB",
+      "category": "database",
+      "description": "Alternativa ao MySQL, usada em muitas hospedagens cPanel. Mesma porta 3306: ative só um dos dois.",
+      "service": "mariadb",
+      "source": {
+        "type": "mariadb",
+        "url": "https://downloads.mariadb.org/rest-api/mariadb/",
+        "urlTemplate": "https://downloads.mariadb.org/rest-api/mariadb/{v}/mariadb-{v}-winx64.zip",
+        "notes": "Linhas estáveis; a última de cada uma, com sha256 da própria API"
+      },
+      "fallbackVersions": [
+        "11.4.13"
+      ]
+    },
+    {
       "id": "postgresql",
       "name": "PostgreSQL",
       "category": "database",
@@ -121,6 +137,38 @@
       ]
     },
     {
+      "id": "opensearch",
+      "name": "OpenSearch",
+      "category": "database",
+      "description": "Motor de busca. Para o Magento 2.4.8, escolha a versão 2.19. Pesado: download de ~1 GB e ~1 GB de memória em uso.",
+      "service": "opensearch",
+      "source": {
+        "type": "github-versions",
+        "url": "https://api.github.com/repos/opensearch-project/OpenSearch/releases?per_page=30",
+        "urlTemplate": "https://artifacts.opensearch.org/releases/bundle/opensearch/{v}/opensearch-{v}-windows-x64.zip",
+        "notes": "Java embutido; o site publica .sha512 (não verificado: o JJPHPMY confere SHA-256)"
+      },
+      "fallbackVersions": [
+        "2.19.7"
+      ]
+    },
+    {
+      "id": "elasticsearch",
+      "name": "Elasticsearch",
+      "category": "database",
+      "description": "Motor de busca. Para o Magento 2.4.7 e anteriores, escolha a versão 8.x. Pesado: download de ~500 a 700 MB e ~1 GB de memória em uso.",
+      "service": "elasticsearch",
+      "source": {
+        "type": "github-versions",
+        "url": "https://api.github.com/repos/elastic/elasticsearch/releases?per_page=30",
+        "urlTemplate": "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-{v}-windows-x86_64.zip",
+        "notes": "Java embutido; o site publica .sha512 (não verificado: o JJPHPMY confere SHA-256)"
+      },
+      "fallbackVersions": [
+        "8.19.24"
+      ]
+    },
+    {
       "id": "composer",
       "name": "Composer",
       "category": "language",
@@ -139,15 +187,35 @@
       ]
     },
     {
+      "id": "wpcli",
+      "name": "WP-CLI",
+      "category": "language",
+      "description": "Linha de comando do WordPress (comando wp no Terminal e no PATH).",
+      "requires": [
+        "php"
+      ],
+      "source": {
+        "type": "github-releases",
+        "url": "https://api.github.com/repos/wp-cli/wp-cli/releases?per_page=30",
+        "assetPattern": "^wp-cli-(\\d+\\.\\d+\\.\\d+)\\.phar$"
+      },
+      "fallbackVersions": [
+        "2.12.0"
+      ]
+    },
+    {
       "id": "phpmyadmin",
       "name": "phpMyAdmin",
       "category": "tool",
       "description": "Administração do MySQL pelo navegador.",
       "requires": [
-        "php",
-        "mysql"
+        "php"
       ],
       "requiresAnyOf": [
+        [
+          "mysql",
+          "mariadb"
+        ],
         [
           "apache",
           "nginx"
@@ -160,6 +228,29 @@
       },
       "fallbackVersions": [
         "5.2.3"
+      ]
+    },
+    {
+      "id": "adminer",
+      "name": "Adminer",
+      "category": "database",
+      "description": "Administra MySQL, MariaDB, PostgreSQL e SQLite num arquivo só. Abre em http://localhost/adminer.",
+      "requires": [
+        "php"
+      ],
+      "requiresAnyOf": [
+        [
+          "apache",
+          "nginx"
+        ]
+      ],
+      "source": {
+        "type": "github-releases",
+        "url": "https://api.github.com/repos/vrana/adminer/releases?per_page=30",
+        "assetPattern": "^adminer-(\\d+\\.\\d+\\.\\d+)\\.php$"
+      },
+      "fallbackVersions": [
+        "6.3.0"
       ]
     },
     {
@@ -252,6 +343,21 @@
       },
       "fallbackVersions": [
         "2.56.0.4"
+      ]
+    },
+    {
+      "id": "cloudflared",
+      "name": "Cloudflare Tunnel",
+      "category": "tool",
+      "description": "Compartilha um site local com um link público temporário (botão Compartilhar em Configurações → Hosts virtuais).",
+      "source": {
+        "type": "github-releases",
+        "url": "https://api.github.com/repos/cloudflare/cloudflared/releases?per_page=30",
+        "assetPattern": "^cloudflared-windows-amd64\\.exe$",
+        "urlTemplate": "https://github.com/cloudflare/cloudflared/releases/download/{v}/cloudflared-windows-amd64.exe"
+      },
+      "fallbackVersions": [
+        "2026.10.7"
       ]
     },
     {

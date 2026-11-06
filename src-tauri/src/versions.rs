@@ -386,6 +386,54 @@ pub fn parse_composer(text: &str) -> Result<Vec<VersionInfo>, String> {
         .collect())
 }
 
+/// https://downloads.mariadb.org/rest-api/mariadb/: linhas estáveis
+/// (id, é LTS?), da mais nova para a mais antiga.
+pub fn parse_mariadb_majors(text: &str) -> Result<Vec<(String, bool)>, String> {
+    let root: Value = json(text)?;
+    let empty = Vec::new();
+    Ok(root["major_releases"]
+        .as_array()
+        .unwrap_or(&empty)
+        .iter()
+        .filter(|r| r["release_status"].as_str() == Some("Stable"))
+        .filter_map(|r| {
+            let id = r["release_id"].as_str()?.to_string();
+            let lts = r["release_support_type"].as_str().is_some_and(|t| t.contains("Long Term"));
+            Some((id, lts))
+        })
+        .collect())
+}
+
+/// https://downloads.mariadb.org/rest-api/mariadb/{linha}/latest/: o zip winx64.
+pub fn parse_mariadb_latest(text: &str, lts: bool) -> Option<VersionInfo> {
+    let root: Value = json(text).ok()?;
+    let (version, rel) = root["releases"].as_object()?.iter().next()?;
+    let file = rel["files"].as_array()?.iter().find(|f| f["file_name"].as_str().is_some_and(|n| n.ends_with("-winx64.zip")))?;
+    // A API devolve http://; o mesmo endereço funciona em https.
+    let url = file["file_download_url"].as_str()?.replacen("http://", "https://", 1);
+    let sha = file["checksum"]["sha256sum"].as_str().map(String::from);
+    let mut info = VersionInfo::single(version.as_str(), url).sha256(sha);
+    info.label = lts.then(|| "LTS".to_string());
+    Some(info)
+}
+
+/// Releases do GitHub sem arquivo anexo (OpenSearch, Elasticsearch): a versão
+/// vem da tag ("v8.19.24" -> "8.19.24") e o link, do `urlTemplate`.
+pub fn parse_github_versions(text: &str, template: &str) -> Result<Vec<VersionInfo>, String> {
+    let list: Vec<Value> = json(text)?;
+    Ok(list
+        .iter()
+        .filter(|r| !r["prerelease"].as_bool().unwrap_or(false) && !r["draft"].as_bool().unwrap_or(false))
+        .filter_map(|r| {
+            let v = r["tag_name"].as_str()?.trim_start_matches('v');
+            v.split('.').all(|p| p.parse::<u32>().is_ok()).then(|| {
+                let mm = v.split('.').take(2).collect::<Vec<_>>().join(".");
+                VersionInfo::single(v, template.replace("{v}", v).replace("{mm}", &mm))
+            })
+        })
+        .collect())
+}
+
 /* ---------- Fallback ---------- */
 
 /// Lista de reserva do catálogo; monta a URL quando há `urlTemplate`
@@ -455,6 +503,17 @@ pub async fn fetch_online(pkg: &Package) -> Result<Vec<VersionInfo>, String> {
         // Sem download automático: a "versão" é a página oficial, aberta no navegador.
         "manual" => vec![VersionInfo::single("site oficial", &src.url)],
         "composer" => parse_composer(&get_text(&src.url).await?)?,
+        "github-versions" => parse_github_versions(&get_text(&src.url).await?, src.url_template.as_deref().unwrap_or(""))?,
+        "mariadb" => {
+            let mut list = Vec::new();
+            // As 6 linhas estáveis mais novas (uma consulta por linha).
+            for (id, lts) in parse_mariadb_majors(&get_text(&src.url).await?)?.into_iter().take(6) {
+                if let Ok(text) = get_text(&format!("{}{id}/latest/", src.url)).await {
+                    list.extend(parse_mariadb_latest(&text, lts));
+                }
+            }
+            list
+        }
         "sourceforge" => parse_sourceforge(&get_text(&src.url).await?, src.asset_pattern.as_deref().unwrap_or("$^"))?,
         other => return Err(format!("Tipo de fonte desconhecido: '{other}'")),
     };
@@ -546,6 +605,32 @@ mod tests {
 
     fn is_sha256(s: &Option<String>) -> bool {
         s.as_ref().is_some_and(|s| s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()))
+    }
+
+    #[test]
+    fn mariadb_stable_lines_and_zip() {
+        let majors = r#"{"major_releases":[
+            {"release_id":"13.1","release_status":"RC","release_support_type":"Rolling"},
+            {"release_id":"13.0","release_status":"Stable","release_support_type":"Rolling"},
+            {"release_id":"11.4","release_status":"Stable","release_support_type":"Long Term Support"}]}"#;
+        assert_eq!(parse_mariadb_majors(majors).unwrap(), [("13.0".to_string(), false), ("11.4".to_string(), true)]);
+        let latest = r#"{"releases":{"11.4.13":{"files":[
+            {"file_name":"mariadb-11.4.13-winx64.msi","file_download_url":"http://x/a.msi","checksum":{}},
+            {"file_name":"mariadb-11.4.13-winx64.zip","file_download_url":"http://downloads.mariadb.org/rest-api/mariadb/11.4.13/mariadb-11.4.13-winx64.zip",
+             "checksum":{"sha256sum":"d62986d433eeebfde218560b276103831604a61e929e87f1a17f5aebd80257e2"}}]}}}"#;
+        let v = parse_mariadb_latest(latest, true).unwrap();
+        assert_eq!(v.version, "11.4.13");
+        assert_eq!(v.label.as_deref(), Some("LTS"));
+        assert!(v.downloads[0].url.starts_with("https://downloads.mariadb.org/"));
+        assert!(is_sha256(&v.downloads[0].sha256));
+    }
+
+    #[test]
+    fn versions_from_github_tags() {
+        let text = r#"[{"tag_name":"v9.5.6","prerelease":false},{"tag_name":"v9.6.0-rc1","prerelease":true},{"tag_name":"2.19.7"},{"tag_name":"nightly"}]"#;
+        let list = parse_github_versions(text, "https://x/es-{v}-win.zip").unwrap();
+        assert_eq!(versions(&list), ["9.5.6", "2.19.7"]);
+        assert_eq!(list[0].downloads[0].url, "https://x/es-9.5.6-win.zip");
     }
 
     #[test]
