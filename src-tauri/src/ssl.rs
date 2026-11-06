@@ -251,7 +251,7 @@ mod tests {
         let hosts = vec!["blog.test".to_string()];
         assert!(ensure_server(&l, &hosts).unwrap());
         assert!(!ensure_server(&l, &hosts).unwrap(), "sem mudanças não recria");
-        assert!(ensure_server(&l, &["blog.test".into(), "loja.test".into(), "pontolink_site.test".into()]).unwrap());
+        assert!(ensure_server(&l, &["blog.test".into(), "loja.test".into(), "meucliente_site.test".into()]).unwrap());
         let chain = fs::read_to_string(server_cert(&l)).unwrap();
         assert_eq!(chain.matches("BEGIN CERTIFICATE").count(), 2);
         let _ = fs::remove_dir_all(&l.base);

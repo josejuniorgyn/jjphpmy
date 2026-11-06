@@ -50,8 +50,8 @@ fn plain(c: char) -> char {
     }
 }
 
-/// Nome de pasta -> nome do site, igual à pasta como no Laragon ("pontolink_site"
-/// -> "pontolink_site"): minúsculas, sem acento, e espaços e outros caracteres
+/// Nome de pasta -> nome do site, igual à pasta como no Laragon ("meucliente_site"
+/// -> "meucliente_site"): minúsculas, sem acento, e espaços e outros caracteres
 /// viram hífen ("Ação Social" -> "acao-social"). O `_` é mantido.
 pub fn slug(folder: &str) -> String {
     let s: String = folder
@@ -569,7 +569,7 @@ mod tests {
     #[test]
     fn slugs_folder_names() {
         assert_eq!(slug("Meu_Site"), "meu_site");
-        assert_eq!(slug("pontolink_site"), "pontolink_site");
+        assert_eq!(slug("meucliente_site"), "meucliente_site");
         assert_eq!(slug("loja  nova"), "loja-nova");
         assert_eq!(slug("--x--"), "x");
         assert_eq!(slug("Ação Social"), "acao-social");
