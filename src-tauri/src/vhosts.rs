@@ -50,13 +50,15 @@ fn plain(c: char) -> char {
     }
 }
 
-/// Nome de pasta -> parte válida de hostname ("Ação_Social" -> "acao-social").
+/// Nome de pasta -> nome do site, igual à pasta como no Laragon ("pontolink_site"
+/// -> "pontolink_site"): minúsculas, sem acento, e espaços e outros caracteres
+/// viram hífen ("Ação Social" -> "acao-social"). O `_` é mantido.
 pub fn slug(folder: &str) -> String {
     let s: String = folder
         .to_lowercase()
         .chars()
         .map(plain)
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' })
+        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
         .collect();
     let mut out = String::new();
     for c in s.trim_matches('-').chars() {
@@ -321,10 +323,10 @@ mod tests {
         m.start(&cfg, &layout, "nginx").unwrap_or_else(|e| panic!("{e}"));
         for (port, server, sapi) in [(18090, "Apache", "apache2handler"), (18091, "Nginx", "cgi-fcgi")] {
             let blog = get(port, "blog.test");
-            let loja = get(port, "loja-nova.test");
+            let loja = get(port, "loja_nova.test");
             let sub = get(port, "www.blog.test");
             let root = get(port, "localhost");
-            println!("{server}: blog.test={blog}  loja-nova.test={loja}  www.blog.test={sub}  localhost={root}");
+            println!("{server}: blog.test={blog}  loja_nova.test={loja}  www.blog.test={sub}  localhost={root}");
             assert_eq!(blog, format!("blog-{sapi}"));
             assert_eq!(loja, format!("loja-{sapi}"));
             assert_eq!(sub, format!("blog-{sapi}"));
@@ -566,7 +568,8 @@ mod tests {
 
     #[test]
     fn slugs_folder_names() {
-        assert_eq!(slug("Meu_Site"), "meu-site");
+        assert_eq!(slug("Meu_Site"), "meu_site");
+        assert_eq!(slug("pontolink_site"), "pontolink_site");
         assert_eq!(slug("loja  nova"), "loja-nova");
         assert_eq!(slug("--x--"), "x");
         assert_eq!(slug("Ação Social"), "acao-social");
@@ -618,7 +621,7 @@ mod tests {
         let (mut cfg, layout) = temp_cfg("sites");
         cfg.services.iter_mut().find(|s| s.id == "apache").unwrap().port = 8888;
         let list = sites(&cfg);
-        assert_eq!(list.iter().map(|s| s.host.as_str()).collect::<Vec<_>>(), ["blog.test", "loja-nova.test"]);
+        assert_eq!(list.iter().map(|s| s.host.as_str()).collect::<Vec<_>>(), ["blog.test", "loja_nova.test"]);
         assert!(list[1].root.ends_with("Loja_Nova/public"));
         assert_eq!(list[0].url, "http://blog.test:8888/");
         let _ = fs::remove_dir_all(&layout.base);
