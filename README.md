@@ -127,7 +127,7 @@ Traga os sites e os bancos de dados do **Laragon** ou do **XAMPP**. O JJPHPMY pr
 ### Sobre
 Versão, autor, licença e link do repositório. Em **Recursos e Funcionalidades**, um resumo do que o JJPHPMY faz, em cartões. Em **Contribua com o projeto**, escolha um valor de R$ 20 a R$ 100 para gerar o QR Code PIX ou o código "copia e cola".
 
-![Aba Sobre](assets/screenshots/sobre.png)
+![Aba Sobre](assets/screenshots/sobre-v0.4.0.png)
 
 ## Instalação
 
